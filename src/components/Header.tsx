@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import CartDrawer from "./CartDrawer";
+import MobileMenu from "./MobileMenu";
 
 const Header = () => {
   const { getTotalItems } = useCart();
+  const { user } = useAuth();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const totalItems = getTotalItems();
 
@@ -18,13 +21,18 @@ const Header = () => {
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-4">
-            {/* Logo - Aumentado significativamente */}
-            <div className="flex items-center space-x-2 flex-shrink-0">
-              <img 
-                src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
-                alt="Musical em bom Português" 
-                className="h-12 sm:h-16 md:h-20 w-auto"
-              />
+            {/* Menu Hambúrguer */}
+            <div className="flex items-center space-x-4">
+              <MobileMenu />
+              
+              {/* Logo - Aumentado ainda mais */}
+              <div className="flex items-center space-x-2 flex-shrink-0">
+                <img 
+                  src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
+                  alt="Musical em bom Português" 
+                  className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto"
+                />
+              </div>
             </div>
 
             {/* Barra de Busca Central - Hidden on mobile, visible on tablet+ */}
@@ -65,12 +73,15 @@ const Header = () => {
                 <span className="ml-2 hidden sm:inline">Carrinho</span>
               </Button>
 
-              <Link to="/login">
-                <Button variant="ghost" size="sm" className="rounded-full">
-                  <User className="w-5 h-5" />
-                  <span className="ml-2 hidden sm:inline">Entrar</span>
-                </Button>
-              </Link>
+              {/* Botão Entrar - Visível apenas para usuários não logados */}
+              {!user && (
+                <Link to="/login">
+                  <Button variant="ghost" size="sm" className="rounded-full">
+                    <User className="w-5 h-5" />
+                    <span className="ml-2 hidden sm:inline">Entrar</span>
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
 

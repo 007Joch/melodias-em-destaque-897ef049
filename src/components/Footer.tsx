@@ -10,12 +10,12 @@ const Footer = () => {
     <footer className="bg-gray-50 border-t border-gray-100 py-8 sm:py-12">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          {/* Logo e Descrição */}
+          {/* Logo - Aumentado para mesmo tamanho do header */}
           <div className="flex items-center space-x-2">
             <img 
               src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
               alt="Musical em bom Português" 
-              className="h-6 sm:h-8 w-auto"
+              className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto"
             />
           </div>
 

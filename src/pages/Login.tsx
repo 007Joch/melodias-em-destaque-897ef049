@@ -4,17 +4,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aqui você implementaria a lógica de login
-    console.log("Login attempt:", { email, password });
+    setLoading(true);
+
+    try {
+      let result;
+      if (isSignUp) {
+        result = await signUp(email, password, name);
+      } else {
+        result = await signIn(email, password);
+      }
+
+      if (result.error) {
+        toast({
+          title: "Erro",
+          description: result.error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: isSignUp ? "Cadastro realizado!" : "Login realizado!",
+          description: isSignUp ? "Conta criada com sucesso" : "Bem-vindo de volta!",
+        });
+        navigate("/");
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -26,28 +63,45 @@ const Login = () => {
           Voltar ao início
         </Link>
 
-        {/* Logo centralizado */}
+        {/* Logo centralizado - Mesmo tamanho do header */}
         <div className="text-center">
           <img 
             src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
             alt="Musical em bom Português" 
-            className="h-20 sm:h-24 w-auto mx-auto mb-8"
+            className="h-20 sm:h-24 md:h-28 w-auto mx-auto mb-8"
           />
         </div>
 
-        {/* Card de Login */}
+        {/* Card de Login/Cadastro */}
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-gray-900">
-              Entrar na sua conta
+              {isSignUp ? "Criar conta" : "Entrar na sua conta"}
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Acesse sua conta para descobrir mais músicas
+              {isSignUp ? "Cadastre-se para descobrir mais músicas" : "Acesse sua conta para descobrir mais músicas"}
             </CardDescription>
           </CardHeader>
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-gray-700 font-medium">
+                    Nome completo
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Seu nome completo"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="rounded-full border-gray-200 focus:border-primary focus:ring-primary/20"
+                    required
+                  />
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-700 font-medium">
                   E-mail
@@ -78,33 +132,39 @@ const Login = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-primary focus:ring-primary/20"
-                  />
-                  <span className="ml-2 text-gray-600">Lembrar de mim</span>
-                </label>
-                <a href="#" className="text-primary hover:text-primary/80 transition-colors">
-                  Esqueceu a senha?
-                </a>
-              </div>
+              {!isSignUp && (
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-primary focus:ring-primary/20"
+                    />
+                    <span className="ml-2 text-gray-600">Lembrar de mim</span>
+                  </label>
+                  <a href="#" className="text-primary hover:text-primary/80 transition-colors">
+                    Esqueceu a senha?
+                  </a>
+                </div>
+              )}
 
               <Button
                 type="submit"
+                disabled={loading}
                 className="w-full bg-primary hover:bg-primary/90 rounded-full py-3 text-base font-medium"
               >
-                Entrar
+                {loading ? "Carregando..." : (isSignUp ? "Criar conta" : "Entrar")}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-gray-600">
-                Não tem uma conta?{" "}
-                <a href="#" className="text-primary hover:text-primary/80 font-medium transition-colors">
-                  Criar conta
-                </a>
+                {isSignUp ? "Já tem uma conta?" : "Não tem uma conta?"}{" "}
+                <button
+                  onClick={() => setIsSignUp(!isSignUp)}
+                  className="text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  {isSignUp ? "Fazer login" : "Criar conta"}
+                </button>
               </p>
             </div>
           </CardContent>
@@ -112,7 +172,7 @@ const Login = () => {
 
         {/* Informações adicionais */}
         <p className="text-center text-xs text-gray-500">
-          Ao entrar, você concorda com nossos{" "}
+          Ao {isSignUp ? "criar uma conta" : "entrar"}, você concorda com nossos{" "}
           <a href="#" className="text-primary hover:text-primary/80">
             Termos de Uso
           </a>{" "}

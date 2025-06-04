@@ -60,33 +60,36 @@ const FeaturedCarousel = () => {
               <div key={item.id} className="w-full flex-shrink-0 px-2 sm:px-4">
                 <Card className="group relative overflow-hidden rounded-xl sm:rounded-2xl border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale">
                   <div className="aspect-[16/9] bg-gradient-to-br from-primary/20 to-purple-100 p-4 sm:p-8">
-                    <div className="flex flex-col sm:flex-row items-center justify-between h-full gap-4">
-                      <div className="flex-1 text-center sm:text-left">
-                        <span className="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-primary bg-white/90 rounded-full mb-3 sm:mb-4">
+                    <div className="flex flex-row items-center justify-between h-full gap-4">
+                      {/* Imagem sempre à esquerda */}
+                      <div className="flex-shrink-0">
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 object-cover rounded-xl sm:rounded-2xl shadow-lg"
+                        />
+                      </div>
+                      
+                      {/* Conteúdo sempre à direita */}
+                      <div className="flex-1 text-left">
+                        <span className="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-primary bg-white/90 rounded-full mb-2 sm:mb-4">
                           {item.category}
                         </span>
-                        <h3 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">{item.title}</h3>
-                        <p className="text-lg sm:text-xl text-gray-600 mb-4 sm:mb-6">{item.artist}</p>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                          <Button className="bg-primary hover:bg-primary/90 rounded-full">
+                        <h3 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">{item.title}</h3>
+                        <p className="text-sm sm:text-lg md:text-xl text-gray-600 mb-3 sm:mb-6">{item.artist}</p>
+                        <div className="flex flex-col gap-2 sm:gap-4">
+                          <Button className="bg-primary hover:bg-primary/90 rounded-full text-xs sm:text-sm">
                             Ver Letra
                           </Button>
                           <Button 
                             variant="outline" 
                             onClick={() => handleAddToCart(item)}
-                            className="rounded-full bg-white/90 hover:bg-white border-primary/20"
+                            className="rounded-full bg-white/90 hover:bg-white border-primary/20 text-xs sm:text-sm"
                           >
-                            <Plus className="w-4 h-4 mr-2" />
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                             Adicionar
                           </Button>
                         </div>
-                      </div>
-                      <div className="flex-shrink-0 order-first sm:order-last">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-32 h-32 sm:w-64 sm:h-64 object-cover rounded-xl sm:rounded-2xl shadow-lg"
-                        />
                       </div>
                     </div>
                   </div>

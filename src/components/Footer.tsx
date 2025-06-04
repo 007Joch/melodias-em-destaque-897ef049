@@ -30,15 +30,12 @@ const Footer = () => {
 
         <div className="border-t border-gray-200 mt-6 sm:mt-8 pt-4 sm:pt-6 text-center">
           <p className="text-xs sm:text-sm text-gray-500">
-            © 2024 Musical. Todos os direitos reservados. Plataforma dedicada à descoberta e compartilhamento de letras musicais.
-          </p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-2">
-            Web Designer: {" "}
+            © 2023 Musical em Bom Português | Desenvolvido por {" "}
             <button 
               onClick={handleDesignerClick}
               className="text-primary hover:text-primary/80 transition-colors duration-200 underline cursor-pointer"
             >
-              Joaby Chaves Web Designer
+              Joaby Chaves - Web Designer
             </button>
           </p>
         </div>

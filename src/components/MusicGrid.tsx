@@ -62,14 +62,14 @@ const MusicGrid = () => {
   ];
 
   return (
-    <section className="py-12">
-      <div className="container mx-auto px-6">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Explorar Músicas</h2>
-          <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
+    <section className="py-8 sm:py-12">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Explorar Músicas</h2>
+          <p className="text-sm sm:text-base text-gray-600">Descobrir letras e versões da sua música favorita</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {musicData.map((music, index) => (
             <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
               <MusicCard {...music} />
@@ -77,8 +77,8 @@ const MusicGrid = () => {
           ))}
         </div>
 
-        <div className="text-center mt-12">
-          <button className="px-8 py-3 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors duration-200">
+        <div className="text-center mt-8 sm:mt-12">
+          <button className="px-6 sm:px-8 py-2 sm:py-3 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors duration-200 text-sm sm:text-base">
             Carregar Mais Músicas
           </button>
         </div>

@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { List } from "lucide-react";
+import { List, Filter } from "lucide-react";
 
 const FilterBar = () => {
   const categories = [
@@ -24,42 +24,45 @@ const FilterBar = () => {
   ];
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-gray-100">
-      <div className="flex items-center space-x-4">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 sm:py-6 border-b border-gray-100">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
         <div className="flex items-center space-x-2">
-          <List className="w-5 h-5 text-gray-500" />
-          <span className="font-medium text-gray-900">Filtros:</span>
+          <List className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+          <span className="font-medium text-gray-900 text-sm sm:text-base">Filtros:</span>
         </div>
         
-        <Select defaultValue="all">
-          <SelectTrigger className="w-48 bg-gray-50 border-0 rounded-full">
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category.toLowerCase().replace(/\s+/g, '-')}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
+          <Select defaultValue="all">
+            <SelectTrigger className="w-full sm:w-48 bg-gray-50 border-0 rounded-full text-sm">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent className="z-50">
+              {categories.map((category) => (
+                <SelectItem key={category} value={category.toLowerCase().replace(/\s+/g, '-')}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select defaultValue="popular">
-          <SelectTrigger className="w-48 bg-gray-50 border-0 rounded-full">
-            <SelectValue placeholder="Ordenar por" />
-          </SelectTrigger>
-          <SelectContent>
-            {sortOptions.map((option) => (
-              <SelectItem key={option} value={option.toLowerCase().replace(/\s+/g, '-')}>
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select defaultValue="popular">
+            <SelectTrigger className="w-full sm:w-48 bg-gray-50 border-0 rounded-full text-sm">
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent className="z-50">
+              {sortOptions.map((option) => (
+                <SelectItem key={option} value={option.toLowerCase().replace(/\s+/g, '-')}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="sm" className="rounded-full">
+      <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+        <Button variant="outline" size="sm" className="rounded-full text-sm">
+          <Filter className="w-4 h-4 mr-1 sm:hidden" />
           Limpar Filtros
         </Button>
       </div>

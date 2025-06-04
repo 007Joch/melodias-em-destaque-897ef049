@@ -2,9 +2,12 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Plus } from "lucide-react";
+import { useCart } from "@/hooks/useCart";
 
 const FeaturedCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const { addToCart } = useCart();
 
   const featuredItems = [
     {
@@ -30,12 +33,22 @@ const FeaturedCarousel = () => {
     }
   ];
 
+  const handleAddToCart = (item: typeof featuredItems[0]) => {
+    addToCart({
+      id: `${item.title}-${item.artist}`.toLowerCase().replace(/\s+/g, '-'),
+      title: item.title,
+      artist: item.artist,
+      category: item.category,
+      image: item.image
+    });
+  };
+
   return (
-    <section className="py-12 bg-gradient-to-r from-primary/5 to-purple-50">
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Músicas em Destaque</h2>
-          <p className="text-gray-600">Descubra as letras mais populares e versões especiais</p>
+    <section className="py-8 sm:py-12 bg-gradient-to-r from-primary/5 to-purple-50">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Músicas em Destaque</h2>
+          <p className="text-sm sm:text-base text-gray-600">Descubra as letras mais populares e versões especiais</p>
         </div>
 
         <div className="relative overflow-hidden">
@@ -44,25 +57,35 @@ const FeaturedCarousel = () => {
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
             {featuredItems.map((item) => (
-              <div key={item.id} className="w-full flex-shrink-0 px-4">
-                <Card className="group relative overflow-hidden rounded-2xl border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale">
-                  <div className="aspect-[16/9] bg-gradient-to-br from-primary/20 to-purple-100 p-8">
-                    <div className="flex items-center justify-between h-full">
-                      <div className="flex-1">
-                        <span className="inline-block px-3 py-1 text-xs font-medium text-primary bg-white/90 rounded-full mb-4">
+              <div key={item.id} className="w-full flex-shrink-0 px-2 sm:px-4">
+                <Card className="group relative overflow-hidden rounded-xl sm:rounded-2xl border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale">
+                  <div className="aspect-[16/9] bg-gradient-to-br from-primary/20 to-purple-100 p-4 sm:p-8">
+                    <div className="flex flex-col sm:flex-row items-center justify-between h-full gap-4">
+                      <div className="flex-1 text-center sm:text-left">
+                        <span className="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-primary bg-white/90 rounded-full mb-3 sm:mb-4">
                           {item.category}
                         </span>
-                        <h3 className="text-4xl font-bold text-gray-900 mb-2">{item.title}</h3>
-                        <p className="text-xl text-gray-600 mb-6">{item.artist}</p>
-                        <Button className="bg-primary hover:bg-primary/90 rounded-full">
-                          Ver Letra
-                        </Button>
+                        <h3 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">{item.title}</h3>
+                        <p className="text-lg sm:text-xl text-gray-600 mb-4 sm:mb-6">{item.artist}</p>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                          <Button className="bg-primary hover:bg-primary/90 rounded-full">
+                            Ver Letra
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => handleAddToCart(item)}
+                            className="rounded-full bg-white/90 hover:bg-white border-primary/20"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Adicionar
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex-shrink-0 ml-8">
+                      <div className="flex-shrink-0 order-first sm:order-last">
                         <img
                           src={item.image}
                           alt={item.title}
-                          className="w-64 h-64 object-cover rounded-2xl shadow-lg"
+                          className="w-32 h-32 sm:w-64 sm:h-64 object-cover rounded-xl sm:rounded-2xl shadow-lg"
                         />
                       </div>
                     </div>
@@ -73,12 +96,12 @@ const FeaturedCarousel = () => {
           </div>
 
           {/* Indicadores */}
-          <div className="flex justify-center mt-6 space-x-2">
+          <div className="flex justify-center mt-4 sm:mt-6 space-x-2">
             {featuredItems.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-200 ${
                   currentSlide === index ? 'bg-primary' : 'bg-gray-300'
                 }`}
               />

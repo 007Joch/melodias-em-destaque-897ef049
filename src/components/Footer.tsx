@@ -11,11 +11,11 @@ const Footer = () => {
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           {/* Logo - Aumentado para mesmo tamanho do header */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 max-h-32 overflow-hidden">
             <img 
               src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
               alt="Musical em bom Português" 
-              className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto"
+              className="h-36 sm:h-40 md:h-44 lg:h-48 w-auto"
             />
           </div>
 

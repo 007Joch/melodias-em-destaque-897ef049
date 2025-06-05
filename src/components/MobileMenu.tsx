@@ -1,9 +1,9 @@
 
 import { useState } from "react";
-import { Menu, X, Home, Music, ShoppingCart, User, LogOut } from "lucide-react";
+import { Menu, Home, Music, ShoppingCart, User, LogOut, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuthHook";
 import { Link } from "react-router-dom";
 
 const MobileMenu = () => {
@@ -13,7 +13,7 @@ const MobileMenu = () => {
   const menuItems = [
     { icon: Home, label: "Início", href: "/" },
     { icon: Music, label: "Músicas", href: "/" },
-    { icon: ShoppingCart, label: "Carrinho", href: "/" },
+    { icon: List, label: "Gerenciar Versos", href: "/manage-verses" },
   ];
 
   const handleSignOut = async () => {
@@ -33,19 +33,19 @@ const MobileMenu = () => {
         <div className="flex flex-col h-full">
           {/* Header do Menu */}
           <div className="flex items-center justify-between p-6 border-b">
-            <img 
+            {/* <img 
               src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
               alt="Musical em bom Português" 
               className="h-8 w-auto"
-            />
-            <Button
+            /> */}
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsOpen(false)}
               className="rounded-full"
             >
               <X className="w-4 h-4" />
-            </Button>
+            </Button> */}
           </div>
 
           {/* Informações do Usuário */}

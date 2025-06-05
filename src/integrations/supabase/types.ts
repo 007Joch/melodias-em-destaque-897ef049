@@ -33,6 +33,75 @@ export type Database = {
         }
         Relationships: []
       }
+      verses: {
+        Row: {
+          artist: string
+          category: string
+          conteudo: string | null
+          created_at: string | null
+          created_by: string | null
+          data: string
+          descricao: string | null
+          id: number
+          image_url: string | null
+          letra_original: string | null
+          letra_original_de: string | null
+          musica: string
+          musical: string
+          status: string | null
+          texto_revisado_por: string | null
+          title: string
+          updated_at: string | null
+          versao_brasileira_de: string | null
+          views: number | null
+          youtube_url: string | null
+        }
+        Insert: {
+          artist: string
+          category: string
+          conteudo?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data: string
+          descricao?: string | null
+          id?: number
+          image_url?: string | null
+          letra_original?: string | null
+          letra_original_de?: string | null
+          musica: string
+          musical: string
+          status?: string | null
+          texto_revisado_por?: string | null
+          title: string
+          updated_at?: string | null
+          versao_brasileira_de?: string | null
+          views?: number | null
+          youtube_url?: string | null
+        }
+        Update: {
+          artist?: string
+          category?: string
+          conteudo?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data?: string
+          descricao?: string | null
+          id?: number
+          image_url?: string | null
+          letra_original?: string | null
+          letra_original_de?: string | null
+          musica?: string
+          musical?: string
+          status?: string | null
+          texto_revisado_por?: string | null
+          title?: string
+          updated_at?: string | null
+          versao_brasileira_de?: string | null
+          views?: number | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
       Versoes: {
         Row: {
           id: number

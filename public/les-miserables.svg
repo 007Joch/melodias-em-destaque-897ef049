@@ -1,0 +1,61 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lesMisBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#37474F;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#546E7A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#263238;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="candleLight" cx="50%" cy="40%" r="40%">
+      <stop offset="0%" style="stop-color:#FFF8E1;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#FFF8E1;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#lesMisBg)"/>
+  
+  <!-- Candlelight effect -->
+  <ellipse cx="200" cy="120" rx="150" ry="100" fill="url(#candleLight)"/>
+  
+  <!-- French flag stripes -->
+  <g opacity="0.3">
+    <rect x="0" y="0" width="133" height="300" fill="#0055A4"/>
+    <rect x="133" y="0" width="134" height="300" fill="#FFFFFF"/>
+    <rect x="267" y="0" width="133" height="300" fill="#EF4135"/>
+  </g>
+  
+  <!-- Barricade silhouette -->
+  <g fill="#1C1C1C" opacity="0.9">
+    <polygon points="50,200 100,180 150,190 200,170 250,185 300,175 350,190 400,180 400,300 0,300"/>
+    <rect x="120" y="160" width="8" height="40" transform="rotate(15 124 180)"/>
+    <rect x="180" y="150" width="6" height="35" transform="rotate(-10 183 167)"/>
+    <rect x="240" y="165" width="10" height="30" transform="rotate(20 245 180)"/>
+  </g>
+  
+  <!-- Candle -->
+  <g transform="translate(190,100)">
+    <rect x="8" y="20" width="4" height="25" fill="#FFF8E1"/>
+    <ellipse cx="10" cy="18" rx="2" ry="3" fill="#FF6F00"/>
+    <ellipse cx="10" cy="16" rx="1" ry="2" fill="#FFD54F"/>
+  </g>
+  
+  <!-- Stars of hope -->
+  <g fill="#FFD700" opacity="0.6">
+    <polygon points="80,80 82,86 88,86 83,90 85,96 80,92 75,96 77,90 72,86 78,86" transform="scale(0.5)"/>
+    <polygon points="320,60 322,66 328,66 323,70 325,76 320,72 315,76 317,70 312,66 318,66" transform="scale(0.4)"/>
+    <polygon points="150,50 152,56 158,56 153,60 155,66 150,62 145,66 147,60 142,56 148,56" transform="scale(0.3)"/>
+  </g>
+  
+  <!-- Musical notes floating -->
+  <g fill="#FFF" opacity="0.5">
+    <circle cx="300" cy="100" r="2"/>
+    <rect x="302" y="90" width="1" height="12"/>
+    <circle cx="320" cy="120" r="2"/>
+    <rect x="322" y="110" width="1" height="12"/>
+    <path d="M302,90 Q310,85 322,90" stroke="#FFF" stroke-width="0.5" fill="none"/>
+  </g>
+  
+  <!-- Title -->
+  <text x="200" y="50" font-family="serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#FFD700">LES MISÉRABLES</text>
+  <text x="200" y="280" font-family="serif" font-size="14" text-anchor="middle" fill="#FFF" opacity="0.8">"I Dreamed a Dream"</text>
+</svg>

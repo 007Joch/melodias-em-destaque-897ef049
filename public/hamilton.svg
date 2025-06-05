@@ -1,0 +1,63 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hamiltonBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A237E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3F51B5;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="spotlight" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" style="stop-color:#FFF;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#FFF;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#hamiltonBg)"/>
+  
+  <!-- Spotlight effect -->
+  <rect width="400" height="300" fill="url(#spotlight)"/>
+  
+  <!-- Colonial building silhouette -->
+  <g fill="#263238" opacity="0.8">
+    <rect x="50" y="180" width="300" height="80"/>
+    <polygon points="50,180 200,120 350,180" fill="#37474F"/>
+    <rect x="180" y="140" width="40" height="40" fill="#455A64"/>
+    <polygon points="180,140 200,120 220,140" fill="#546E7A"/>
+  </g>
+  
+  <!-- Stars pattern -->
+  <g fill="#FFD700" opacity="0.6">
+    <polygon points="100,60 102,66 108,66 103,70 105,76 100,72 95,76 97,70 92,66 98,66" transform="scale(0.8)"/>
+    <polygon points="150,40 152,46 158,46 153,50 155,56 150,52 145,56 147,50 142,46 148,46" transform="scale(0.6)"/>
+    <polygon points="250,50 252,56 258,56 253,60 255,66 250,62 245,66 247,60 242,56 248,56" transform="scale(0.7)"/>
+    <polygon points="320,70 322,76 328,76 323,80 325,86 320,82 315,86 317,80 312,76 318,76" transform="scale(0.5)"/>
+  </g>
+  
+  <!-- Quill pen -->
+  <g transform="translate(300,100) rotate(45)">
+    <rect x="0" y="0" width="2" height="30" fill="#8D6E63"/>
+    <polygon points="0,0 2,0 6,-8 4,-10 -2,-8" fill="#FFF"/>
+  </g>
+  
+  <!-- Musical staff -->
+  <g stroke="#FFF" stroke-width="1" opacity="0.4">
+    <line x1="50" y1="250" x2="200" y2="250"/>
+    <line x1="50" y1="255" x2="200" y2="255"/>
+    <line x1="50" y1="260" x2="200" y2="260"/>
+    <line x1="50" y1="265" x2="200" y2="265"/>
+    <line x1="50" y1="270" x2="200" y2="270"/>
+  </g>
+  
+  <!-- Musical notes -->
+  <g fill="#FFF" opacity="0.7">
+    <circle cx="80" cy="255" r="2"/>
+    <rect x="82" y="245" width="1" height="12"/>
+    <circle cx="100" cy="260" r="2"/>
+    <rect x="102" y="250" width="1" height="12"/>
+    <circle cx="120" cy="250" r="2"/>
+    <rect x="122" y="240" width="1" height="12"/>
+  </g>
+  
+  <!-- Title -->
+  <text x="200" y="40" font-family="serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#FFD700">HAMILTON</text>
+  <text x="200" y="60" font-family="serif" font-size="12" text-anchor="middle" fill="#FFF" opacity="0.8">An American Musical</text>
+</svg>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuthHook";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import CartDrawer from "./CartDrawer";
@@ -23,14 +23,14 @@ const Header = () => {
           <div className="flex items-center justify-between gap-4">
             {/* Menu Hambúrguer */}
             <div className="flex items-center space-x-4">
-              <MobileMenu />
+              {user && <MobileMenu />}
               
               {/* Logo - Aumentado ainda mais */}
-              <div className="flex items-center space-x-2 flex-shrink-0">
+              <div className="flex items-center space-x-2 flex-shrink-0 max-h-32 overflow-hidden">
                 <img 
                   src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
                   alt="Musical em bom Português" 
-                  className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto"
+                  className="h-36 sm:h-40 md:h-44 lg:h-48 w-auto"
                 />
               </div>
             </div>

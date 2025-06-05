@@ -3,8 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Music, Plus } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { Link } from "react-router-dom";
 
 interface MusicCardProps {
+  id?: number | string;
   title: string;
   artist: string;
   image?: string;
@@ -12,12 +14,13 @@ interface MusicCardProps {
   views?: number;
 }
 
-const MusicCard = ({ title, artist, image, category, views }: MusicCardProps) => {
+const MusicCard = ({ id, title, artist, image, category, views }: MusicCardProps) => {
   const { addToCart } = useCart();
+  const verseId = id ? String(id) : `${title}-${artist}`.toLowerCase().replace(/\s+/g, '-');
 
   const handleAddToCart = () => {
     addToCart({
-      id: `${title}-${artist}`.toLowerCase().replace(/\s+/g, '-'),
+      id: verseId,
       title,
       artist,
       category,
@@ -40,20 +43,24 @@ const MusicCard = ({ title, artist, image, category, views }: MusicCardProps) =>
           </div>
         )}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-        <Button
-          size="sm"
-          className="absolute top-2 sm:top-3 right-2 sm:right-3 rounded-full bg-white/90 text-gray-900 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-8 w-8 sm:h-auto sm:w-auto p-2 sm:px-3"
-        >
-          <span className="hidden sm:inline">Ver</span>
-          <span className="sm:hidden">👁</span>
-        </Button>
+        <Link to={`/verse/${verseId}`}>
+          <Button
+            size="sm"
+            className="absolute top-2 sm:top-3 right-2 sm:right-3 rounded-full bg-white/90 text-gray-900 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-8 w-8 sm:h-auto sm:w-auto p-2 sm:px-3"
+          >
+            <span className="hidden sm:inline">Ver</span>
+            <span className="sm:hidden">👁</span>
+          </Button>
+        </Link>
       </div>
       
       <div className="p-3 sm:p-4">
         <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full mb-2">
           {category}
         </span>
-        <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm sm:text-base">{title}</h3>
+        <Link to={`/verse/${verseId}`} className="block">
+          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm sm:text-base hover:text-primary transition-colors">{title}</h3>
+        </Link>
         <p className="text-xs sm:text-sm text-gray-600 mb-2">{artist}</p>
         {views && (
           <p className="text-xs text-gray-500 mb-3">{views.toLocaleString()} visualizações</p>

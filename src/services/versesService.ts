@@ -1,4 +1,3 @@
-
 import { supabase } from '../integrations/supabase/client';
 import { Database } from '../integrations/supabase/types';
 
@@ -228,50 +227,40 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 // Função para buscar todos os versos
 export const getAllVerses = async (): Promise<Verse[]> => {
   try {
-    console.log('Buscando todos os versos da tabela versoes...');
+    console.log('=== INICIANDO getAllVerses ===');
     
-    // Primeiro, vamos buscar todos os versos sem filtro para ver se existem dados
-    const { data: allData, error: allError } = await supabase
-      .from('versoes')
-      .select('*')
-      .order('criada_em', { ascending: false });
-
-    console.log('Tentativa de busca sem filtros:', { 
-      totalRows: allData?.length || 0, 
-      error: allError?.message || 'Nenhum erro',
-      sampleData: allData?.[0] || 'Nenhum dado encontrado'
-    });
-
-    if (allError) {
-      console.error('Erro na busca sem filtros:', allError);
-    }
-
-    // Agora vamos buscar com filtro de status, mas vamos verificar quais status existem
     const { data, error } = await supabase
       .from('versoes')
       .select('*')
       .order('criada_em', { ascending: false });
 
+    console.log('=== RESULTADO DA QUERY ===');
+    console.log('Error:', error);
+    console.log('Data length:', data?.length || 0);
+    console.log('Raw data:', data);
+    
     if (error) {
-      console.error('Erro ao buscar versos:', error);
+      console.error('Erro na query Supabase:', error);
       throw error;
     }
     
-    console.log('Dados encontrados na tabela versoes:');
-    console.log('- Total de registros:', data?.length || 0);
-    console.log('- Primeiro registro:', data?.[0]);
-    console.log('- Status encontrados:', [...new Set(data?.map(v => v.status) || [])]);
+    if (!data || data.length === 0) {
+      console.log('=== DADOS VAZIOS OU NULOS ===');
+      console.log('Data é null?', data === null);
+      console.log('Data é array vazio?', Array.isArray(data) && data.length === 0);
+      return [];
+    }
     
-    // Vamos filtrar apenas os ativos no código por enquanto
-    const activeVerses = data?.filter(verse => 
-      !verse.status || verse.status === 'active' || verse.status === null
-    ) || [];
+    console.log('=== DADOS ENCONTRADOS ===');
+    console.log('Total de registros:', data.length);
+    console.log('Primeiro registro completo:', JSON.stringify(data[0], null, 2));
+    console.log('Campos do primeiro registro:', Object.keys(data[0] || {}));
     
-    console.log('Versos ativos encontrados:', activeVerses.length);
-    
-    return activeVerses;
+    return data;
   } catch (error) {
-    console.error('Erro geral ao buscar versos:', error);
+    console.error('=== ERRO GERAL em getAllVerses ===');
+    console.error('Tipo do erro:', typeof error);
+    console.error('Erro completo:', error);
     throw error;
   }
 };

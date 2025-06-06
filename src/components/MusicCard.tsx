@@ -19,9 +19,12 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
   const { addToCart } = useCart();
   const verseId = id ? String(id) : `${title}-${artist}`.toLowerCase().replace(/\s+/g, '-');
 
-  console.log('Renderizando MusicCard:', { id, title, artist, image, category, views, price });
+  console.log('=== MusicCard: RENDERIZAÇÃO ===');
+  console.log('Props recebidas:', { id, title, artist, image, category, views, price });
+  console.log('verseId calculado:', verseId);
 
   const handleAddToCart = () => {
+    console.log('=== MusicCard: ADICIONANDO AO CARRINHO ===');
     addToCart({
       id: verseId,
       title,
@@ -39,6 +42,8 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
     }).format(value);
   };
 
+  console.log('=== MusicCard: RENDERIZANDO COMPONENTE ===');
+
   return (
     <Card className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 hover-scale bg-white">
       <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
@@ -48,8 +53,13 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              console.log('Erro ao carregar imagem:', image);
+              console.log('=== MusicCard: ERRO AO CARREGAR IMAGEM ===');
+              console.log('URL da imagem:', image);
               e.currentTarget.style.display = 'none';
+            }}
+            onLoad={() => {
+              console.log('=== MusicCard: IMAGEM CARREGADA COM SUCESSO ===');
+              console.log('URL da imagem:', image);
             }}
           />
         ) : (

@@ -15,39 +15,88 @@ const MusicGrid = () => {
 
   const fetchVerses = useCallback(async () => {
     try {
-      console.log('=== INICIANDO BUSCA DE VERSOS ===');
+      console.log('=== MusicGrid: INICIANDO BUSCA ===');
       setIsLoading(true);
       setError(null);
       
       const data = await getAllVerses();
       
-      console.log('=== RESULTADO DA BUSCA ===');
-      console.log('Versos retornados:', data.length);
-      console.log('Primeiro verso:', data[0]);
-      console.log('Estrutura do primeiro verso:', data[0] ? Object.keys(data[0]) : 'Nenhum verso');
+      console.log('=== MusicGrid: DADOS RECEBIDOS ===');
+      console.log('Tipo dos dados:', typeof data);
+      console.log('É array?', Array.isArray(data));
+      console.log('Length:', data?.length);
+      console.log('Dados completos:', data);
       
+      if (!data) {
+        console.log('=== MusicGrid: DADOS NULOS ===');
+        setVerses([]);
+        return;
+      }
+      
+      if (!Array.isArray(data)) {
+        console.error('=== MusicGrid: DADOS NÃO SÃO ARRAY ===');
+        console.error('Tipo recebido:', typeof data);
+        console.error('Valor:', data);
+        setError('Formato de dados inválido recebido do servidor');
+        return;
+      }
+      
+      console.log('=== MusicGrid: DEFININDO VERSOS ===');
+      console.log('Definindo verses com:', data.length, 'itens');
       setVerses(data);
+      
+      console.log('=== MusicGrid: VERSOS DEFINIDOS ===');
+      console.log('Estado verses atualizado');
+      
     } catch (err) {
-      console.error('=== ERRO NA BUSCA ===');
-      console.error('Erro detalhado:', err);
+      console.error('=== MusicGrid: ERRO NA BUSCA ===');
+      console.error('Tipo do erro:', typeof err);
+      console.error('Erro completo:', err);
+      console.error('Stack trace:', err instanceof Error ? err.stack : 'Não disponível');
       setError('Erro ao carregar os versos. Tente novamente.');
     } finally {
+      console.log('=== MusicGrid: FINALIZANDO BUSCA ===');
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    console.log('=== MusicGrid: useEffect TRIGGERED ===');
     fetchVerses();
   }, [fetchVerses]);
+
+  // Log quando o estado de verses muda
+  useEffect(() => {
+    console.log('=== MusicGrid: ESTADO verses MUDOU ===');
+    console.log('Novo estado verses:', verses);
+    console.log('Length do estado:', verses.length);
+    console.log('Primeiro item do estado:', verses[0]);
+  }, [verses]);
 
   const handleLoadMore = useCallback(() => {
     setDisplayCount(prev => prev + 8);
   }, []);
 
-  const displayedVerses = useMemo(() => verses.slice(0, displayCount), [verses, displayCount]);
+  const displayedVerses = useMemo(() => {
+    console.log('=== MusicGrid: CALCULANDO displayedVerses ===');
+    console.log('verses.length:', verses.length);
+    console.log('displayCount:', displayCount);
+    const result = verses.slice(0, displayCount);
+    console.log('displayedVerses result:', result);
+    console.log('displayedVerses length:', result.length);
+    return result;
+  }, [verses, displayCount]);
+  
   const hasMoreVerses = useMemo(() => verses.length > displayCount, [verses.length, displayCount]);
 
+  console.log('=== MusicGrid: RENDERIZAÇÃO ===');
+  console.log('isLoading:', isLoading);
+  console.log('error:', error);
+  console.log('verses.length:', verses.length);
+  console.log('displayedVerses.length:', displayedVerses.length);
+
   if (isLoading) {
+    console.log('=== MusicGrid: RENDERIZANDO LOADING ===');
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
@@ -67,6 +116,7 @@ const MusicGrid = () => {
   }
 
   if (error) {
+    console.log('=== MusicGrid: RENDERIZANDO ERROR ===');
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
@@ -91,6 +141,7 @@ const MusicGrid = () => {
   }
 
   if (verses.length === 0) {
+    console.log('=== MusicGrid: RENDERIZANDO EMPTY STATE ===');
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
@@ -117,6 +168,7 @@ const MusicGrid = () => {
     );
   }
 
+  console.log('=== MusicGrid: RENDERIZANDO GRID ===');
   console.log('Renderizando grid com', displayedVerses.length, 'versos');
 
   return (
@@ -128,21 +180,21 @@ const MusicGrid = () => {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {displayedVerses.map((verse) => {
-            console.log('Renderizando card para verso:', {
-              id: verse.id,
-              titulo_original: verse.titulo_original,
-              titulo_pt_br: verse.titulo_pt_br,
-              musical: verse.musical,
-              estilo: verse.estilo,
-              valor: verse.valor
-            });
+          {displayedVerses.map((verse, index) => {
+            console.log(`=== MusicGrid: RENDERIZANDO CARD ${index} ===`);
+            console.log('Verso completo:', verse);
+            console.log('ID:', verse.id);
+            console.log('titulo_original:', verse.titulo_original);
+            console.log('musical:', verse.musical);
+            console.log('estilo:', verse.estilo);
+            console.log('valor:', verse.valor);
+            console.log('url_imagem:', verse.url_imagem);
             
             return (
               <MusicCard
                 key={verse.id}
                 id={verse.id}
-                title={verse.titulo_original || verse.titulo_pt_br || 'Título não informado'}
+                title={verse.titulo_original || 'Título não informado'}
                 artist={verse.musical || 'Artista não informado'}
                 image={verse.url_imagem || undefined}
                 category={verse.estilo?.[0] || 'Musical'}

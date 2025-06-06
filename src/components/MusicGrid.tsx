@@ -15,14 +15,21 @@ const MusicGrid = () => {
 
   const fetchVerses = useCallback(async () => {
     try {
-      console.log('Iniciando busca de versos da tabela versoes...');
+      console.log('=== INICIANDO BUSCA DE VERSOS ===');
       setIsLoading(true);
       setError(null);
+      
       const data = await getAllVerses();
-      console.log('Versos carregados da tabela versoes:', data);
+      
+      console.log('=== RESULTADO DA BUSCA ===');
+      console.log('Versos retornados:', data.length);
+      console.log('Primeiro verso:', data[0]);
+      console.log('Estrutura do primeiro verso:', data[0] ? Object.keys(data[0]) : 'Nenhum verso');
+      
       setVerses(data);
     } catch (err) {
-      console.error('Erro ao carregar versos:', err);
+      console.error('=== ERRO NA BUSCA ===');
+      console.error('Erro detalhado:', err);
       setError('Erro ao carregar os versos. Tente novamente.');
     } finally {
       setIsLoading(false);
@@ -92,12 +99,25 @@ const MusicGrid = () => {
             <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
           </div>
           <div className="flex justify-center items-center py-12">
-            <p className="text-gray-600">Nenhum verso encontrado.</p>
+            <div className="text-center">
+              <p className="text-gray-600 mb-4">Nenhum verso encontrado na tabela versoes.</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Verifique se existem registros na tabela ou se estão com status correto.
+              </p>
+              <button 
+                onClick={fetchVerses}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Recarregar
+              </button>
+            </div>
           </div>
         </div>
       </section>
     );
   }
+
+  console.log('Renderizando grid com', displayedVerses.length, 'versos');
 
   return (
     <section className="py-8 sm:py-12">
@@ -108,18 +128,29 @@ const MusicGrid = () => {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {displayedVerses.map((verse) => (
-            <MusicCard
-              key={verse.id}
-              id={verse.id}
-              title={verse.titulo_original || verse.titulo_pt_br || 'Título não informado'}
-              artist={verse.musical || 'Artista não informado'}
-              image={verse.url_imagem || undefined}
-              category={verse.estilo?.[0] || 'Musical'}
-              views={verse.visualizacoes || 0}
-              price={verse.valor || 0}
-            />
-          ))}
+          {displayedVerses.map((verse) => {
+            console.log('Renderizando card para verso:', {
+              id: verse.id,
+              titulo_original: verse.titulo_original,
+              titulo_pt_br: verse.titulo_pt_br,
+              musical: verse.musical,
+              estilo: verse.estilo,
+              valor: verse.valor
+            });
+            
+            return (
+              <MusicCard
+                key={verse.id}
+                id={verse.id}
+                title={verse.titulo_original || verse.titulo_pt_br || 'Título não informado'}
+                artist={verse.musical || 'Artista não informado'}
+                image={verse.url_imagem || undefined}
+                category={verse.estilo?.[0] || 'Musical'}
+                views={verse.visualizacoes || 0}
+                price={verse.valor || 0}
+              />
+            );
+          })}
         </div>
         
         {hasMoreVerses && (

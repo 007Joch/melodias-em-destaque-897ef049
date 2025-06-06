@@ -1,3 +1,4 @@
+
 import { supabase } from '../integrations/supabase/client';
 import { Database } from '../integrations/supabase/types';
 
@@ -228,10 +229,27 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 export const getAllVerses = async (): Promise<Verse[]> => {
   try {
     console.log('Buscando todos os versos da tabela versoes...');
+    
+    // Primeiro, vamos buscar todos os versos sem filtro para ver se existem dados
+    const { data: allData, error: allError } = await supabase
+      .from('versoes')
+      .select('*')
+      .order('criada_em', { ascending: false });
+
+    console.log('Tentativa de busca sem filtros:', { 
+      totalRows: allData?.length || 0, 
+      error: allError?.message || 'Nenhum erro',
+      sampleData: allData?.[0] || 'Nenhum dado encontrado'
+    });
+
+    if (allError) {
+      console.error('Erro na busca sem filtros:', allError);
+    }
+
+    // Agora vamos buscar com filtro de status, mas vamos verificar quais status existem
     const { data, error } = await supabase
       .from('versoes')
       .select('*')
-      .eq('status', 'active')
       .order('criada_em', { ascending: false });
 
     if (error) {
@@ -239,9 +257,19 @@ export const getAllVerses = async (): Promise<Verse[]> => {
       throw error;
     }
     
-    console.log('Versos encontrados na tabela versoes:', data?.length || 0);
-    console.log('Exemplo de dados:', data?.[0]);
-    return data || [];
+    console.log('Dados encontrados na tabela versoes:');
+    console.log('- Total de registros:', data?.length || 0);
+    console.log('- Primeiro registro:', data?.[0]);
+    console.log('- Status encontrados:', [...new Set(data?.map(v => v.status) || [])]);
+    
+    // Vamos filtrar apenas os ativos no código por enquanto
+    const activeVerses = data?.filter(verse => 
+      !verse.status || verse.status === 'active' || verse.status === null
+    ) || [];
+    
+    console.log('Versos ativos encontrados:', activeVerses.length);
+    
+    return activeVerses;
   } catch (error) {
     console.error('Erro geral ao buscar versos:', error);
     throw error;

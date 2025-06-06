@@ -1,25 +1,26 @@
 import { supabase } from '../integrations/supabase/client';
 import { Database } from '../integrations/supabase/types';
 
-type Verse = Database['public']['Tables']['verses']['Row'];
-type VerseInsert = Database['public']['Tables']['verses']['Insert'];
-type VerseUpdate = Database['public']['Tables']['verses']['Update'];
+type Verse = Database['public']['Tables']['versoes']['Row'];
+type VerseInsert = Database['public']['Tables']['versoes']['Insert'];
+type VerseUpdate = Database['public']['Tables']['versoes']['Update'];
 
 export interface VerseFormData {
   // Informações do Musical
-  musical: string;
-  musica: string;
+  origem: string;
+  compositor: string;
   letraOriginal: string;
-  letraOriginalDe: string;
-  versaoBrasileiraDE: string;
-  textoRevisadoPor: string;
-  data: string;
+  letrista: string;
+  versionista: string;
+  revisao: string;
+  versionadoEm: string;
   
   // Informações do Produto
-  title: string;
-  artist: string;
-  category: string;
+  titulo_pt_br: string;
+  musical: string;
+  estilo: string;
   descricao: string;
+  valor: number;
   
   // Conteúdo e mídia
   conteudo: string;
@@ -89,11 +90,11 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     const resizedFile = await resizeImage(file);
     console.log('Imagem redimensionada:', { newSize: resizedFile.size, newType: resizedFile.type });
     
-    const filePath = `verses/${fileName}.jpg`; // Sempre salvar como JPG
+    const filePath = `capas/${fileName}.jpg`; // Sempre salvar como JPG
     console.log('Caminho do arquivo:', filePath);
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('images')
+      .from('capas')
       .upload(filePath, resizedFile, {
         cacheControl: '3600',
         upsert: false
@@ -111,7 +112,7 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
 
     // Obter URL pública da imagem
     const { data } = supabase.storage
-      .from('images')
+      .from('capas')
       .getPublicUrl(filePath);
 
     console.log('URL pública gerada:', data.publicUrl);
@@ -125,7 +126,7 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
 // Função para criar um novo verso
 export const createVerse = async (formData: VerseFormData): Promise<Verse | null> => {
   try {
-    console.log('Iniciando criação de verso:', { title: formData.title, hasImageFile: !!formData.imageFile, hasImageUrl: !!formData.imageUrl });
+    console.log('Iniciando criação de verso:', { titulo_pt_br: formData.titulo_pt_br, hasImageFile: !!formData.imageFile, hasImageUrl: !!formData.imageUrl });
     
     // Obter o usuário autenticado
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -180,33 +181,33 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 
     const verseData: VerseInsert = {
       // Informações do musical
-      musical: formData.musical,
-      musica: formData.musica,
+      titulo_original: formData.origem,
+      origem: formData.origem,
+      compositor: [formData.compositor],
       letra_original: formData.letraOriginal,
-      letra_original_de: formData.letraOriginalDe,
-      versao_brasileira_de: formData.versaoBrasileiraDE,
-      texto_revisado_por: formData.textoRevisadoPor,
-      data: formData.data,
+      letrista: [formData.letrista],
+      versionista: [formData.versionista],
+      revisao: [formData.revisao],
+      versionado_em: formData.versionadoEm,
       
       // Informações do produto
-      title: formData.title,
-      artist: formData.artist,
-      category: formData.category,
-      descricao: formData.descricao,
+      titulo_pt_br: formData.titulo_pt_br,
+      musical: formData.musical,
+      estilo: [formData.estilo],
+      valor: formData.valor,
       
       // Conteúdo e mídia
       conteudo: formData.conteudo,
-      image_url: imageUrl,
-      youtube_url: formData.youtubeUrl || null,
+      url_imagem: imageUrl,
       
       // Valores padrão
       status: 'active',
-      views: 0,
-      created_by: user.id
+      visualizacoes: 0,
+      criada_por: user.id
     };
 
     const { data, error } = await supabase
-      .from('verses')
+      .from('versoes')
       .insert(verseData)
       .select()
       .single();
@@ -226,16 +227,16 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 // Função para buscar todos os versos
 export const getAllVerses = async (): Promise<Verse[]> => {
   const { data, error } = await supabase
-    .from('verses')
+    .from('versoes')
     .select('*')
     .eq('status', 'active')
-    .order('created_at', { ascending: false });
+    .order('criada_em', { ascending: false });
 
   if (error) {
     console.error('Erro ao buscar versos:', error);
     throw error;
   }
-
+  
   return data || [];
 };
 
@@ -243,7 +244,7 @@ export const getAllVerses = async (): Promise<Verse[]> => {
 export const getVerseById = async (id: number): Promise<Verse | null> => {
   try {
     const { data, error } = await supabase
-      .from('verses')
+      .from('versoes')
       .select('*')
       .eq('id', id)
       .single();
@@ -277,23 +278,25 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
     const updateData: VerseUpdate = {};
     
     // Mapear campos do formulário para campos do banco
-    if (formData.musical !== undefined) updateData.musical = formData.musical;
-    if (formData.musica !== undefined) updateData.musica = formData.musica;
+    if (formData.origem !== undefined) {
+      updateData.origem = formData.origem;
+      updateData.titulo_original = formData.origem;
+    }
+    if (formData.compositor !== undefined) updateData.compositor = [formData.compositor];
     if (formData.letraOriginal !== undefined) updateData.letra_original = formData.letraOriginal;
-    if (formData.letraOriginalDe !== undefined) updateData.letra_original_de = formData.letraOriginalDe;
-    if (formData.versaoBrasileiraDE !== undefined) updateData.versao_brasileira_de = formData.versaoBrasileiraDE;
-    if (formData.textoRevisadoPor !== undefined) updateData.texto_revisado_por = formData.textoRevisadoPor;
-    if (formData.data !== undefined) updateData.data = formData.data;
-    if (formData.title !== undefined) updateData.title = formData.title;
-    if (formData.artist !== undefined) updateData.artist = formData.artist;
-    if (formData.category !== undefined) updateData.category = formData.category;
-    if (formData.descricao !== undefined) updateData.descricao = formData.descricao;
+    if (formData.letrista !== undefined) updateData.letrista = [formData.letrista];
+    if (formData.versionista !== undefined) updateData.versionista = [formData.versionista];
+    if (formData.revisao !== undefined) updateData.revisao = [formData.revisao];
+    if (formData.versionadoEm !== undefined) updateData.versionado_em = formData.versionadoEm;
+    if (formData.titulo_pt_br !== undefined) updateData.titulo_pt_br = formData.titulo_pt_br;
+    if (formData.musical !== undefined) updateData.musical = formData.musical;
+    if (formData.estilo !== undefined) updateData.estilo = [formData.estilo];
+    if (formData.valor !== undefined) updateData.valor = formData.valor;
     if (formData.conteudo !== undefined) updateData.conteudo = formData.conteudo;
-    if (imageUrl !== undefined) updateData.image_url = imageUrl;
-    if (formData.youtubeUrl !== undefined) updateData.youtube_url = formData.youtubeUrl;
+    if (imageUrl !== undefined) updateData.url_imagem = imageUrl;
 
     const { data, error } = await supabase
-      .from('verses')
+      .from('versoes')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -315,7 +318,7 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
 export const deleteVerse = async (id: number): Promise<boolean> => {
   try {
     const { error } = await supabase
-      .from('verses')
+      .from('versoes')
       .update({ status: 'inactive' })
       .eq('id', id);
 
@@ -341,8 +344,8 @@ export const incrementViews = async (id: number): Promise<void> => {
       const verse = await getVerseById(id);
       if (verse) {
         await supabase
-          .from('verses')
-          .update({ views: (verse.views || 0) + 1 })
+          .from('versoes')
+          .update({ visualizacoes: (verse.visualizacoes || 0) + 1 })
           .eq('id', id);
       }
     }
@@ -351,15 +354,15 @@ export const incrementViews = async (id: number): Promise<void> => {
   }
 };
 
-// Função para buscar versos por categoria
+// Função para buscar versos por categoria (usando estilo)
 export const getVersesByCategory = async (category: string): Promise<Verse[]> => {
   try {
     const { data, error } = await supabase
-      .from('verses')
+      .from('versoes')
       .select('*')
-      .eq('category', category)
+      .contains('estilo', [category])
       .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .order('criada_em', { ascending: false });
 
     if (error) {
       console.error('Erro ao buscar versos por categoria:', error);
@@ -373,24 +376,24 @@ export const getVersesByCategory = async (category: string): Promise<Verse[]> =>
   }
 };
 
-// Função para buscar versos por artista
-export const getVersesByArtist = async (artist: string): Promise<Verse[]> => {
+// Função para buscar versos por musical
+export const getVersesByArtist = async (musical: string): Promise<Verse[]> => {
   try {
     const { data, error } = await supabase
-      .from('verses')
+      .from('versoes')
       .select('*')
-      .eq('artist', artist)
+      .eq('musical', musical)
       .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .order('criada_em', { ascending: false });
 
     if (error) {
-      console.error('Erro ao buscar versos por artista:', error);
+      console.error('Erro ao buscar versos por musical:', error);
       return [];
     }
 
     return data || [];
   } catch (error) {
-    console.error('Erro ao buscar versos por artista:', error);
+    console.error('Erro ao buscar versos por musical:', error);
     return [];
   }
 };

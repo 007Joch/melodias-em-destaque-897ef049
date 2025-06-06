@@ -5,7 +5,7 @@ import { getAllVerses } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
 import { Loader2 } from 'lucide-react';
 
-type Verse = Database['public']['Tables']['verses']['Row'];
+type Verse = Database['public']['Tables']['versoes']['Row'];
 
 const MusicGrid = () => {
   const [verses, setVerses] = useState<Verse[]>([]);
@@ -13,7 +13,9 @@ const MusicGrid = () => {
   const [error, setError] = useState<string | null>(null);
   const [displayCount, setDisplayCount] = useState(8);
 
-  const fetchVerses = useCallback(async () => {
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  const fetchVerses = async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -25,11 +27,14 @@ const MusicGrid = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    fetchVerses();
-  }, [fetchVerses]);
+    if (!hasInitialized) {
+      setHasInitialized(true);
+      fetchVerses();
+    }
+  }, []);
 
   const handleLoadMore = useCallback(() => {
     setDisplayCount(prev => prev + 8);
@@ -110,11 +115,12 @@ const MusicGrid = () => {
             <MusicCard
               key={verse.id}
               id={verse.id}
-              title={verse.title}
-              artist={verse.artist}
-              image={verse.image_url || '/musical-generic.svg'}
-              category={verse.category || 'Musical'}
-              views={verse.views || 0}
+              title={verse.titulo_pt_br || ''}
+              artist={verse.musical || ''}
+              image={verse.url_imagem || '/musical-generic.svg'}
+              category={verse.estilo?.[0] || 'Musical'}
+              views={verse.visualizacoes || 0}
+              price={verse.valor || 0}
             />
           ))}
         </div>

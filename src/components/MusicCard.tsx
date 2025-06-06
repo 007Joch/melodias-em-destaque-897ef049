@@ -12,9 +12,10 @@ interface MusicCardProps {
   image?: string;
   category: string;
   views?: number;
+  price?: number;
 }
 
-const MusicCard = ({ id, title, artist, image, category, views }: MusicCardProps) => {
+const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCardProps) => {
   const { addToCart } = useCart();
   const verseId = id ? String(id) : `${title}-${artist}`.toLowerCase().replace(/\s+/g, '-');
 
@@ -63,7 +64,11 @@ const MusicCard = ({ id, title, artist, image, category, views }: MusicCardProps
         </Link>
         <p className="text-xs sm:text-sm text-gray-600 mb-2">{artist}</p>
         {views && (
-          <p className="text-xs text-gray-500 mb-3">{views.toLocaleString()} visualizações</p>
+          <p className="text-xs text-gray-500 mb-2">{views.toLocaleString()} visualizações</p>
+        )}
+        
+        {price && (
+          <p className="text-sm font-semibold text-primary mb-3">R$ {price.toFixed(2).replace('.', ',')}</p>
         )}
         
         <Button 

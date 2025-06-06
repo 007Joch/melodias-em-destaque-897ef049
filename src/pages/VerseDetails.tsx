@@ -10,7 +10,7 @@ import { CartProvider } from "@/hooks/useCart";
 import { getVerseById, incrementViews } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
 
-type Verse = Database['public']['Tables']['verses']['Row'];
+type Verse = Database['public']['Tables']['versoes']['Row'];
 
 const VerseDetails = () => {
   const { id } = useParams();
@@ -89,10 +89,10 @@ const VerseDetails = () => {
   const handleAddToCart = () => {
     addToCart({
       id: verse.id.toString(),
-      title: verse.title,
-      artist: verse.artist,
-      category: verse.category,
-      image: verse.image_url || '/placeholder.svg'
+      title: verse.titulo_pt_br,
+      artist: verse.musical,
+      category: verse.estilo?.[0] || '',
+      image: verse.url_imagem || '/placeholder.svg'
     });
   };
 
@@ -131,7 +131,7 @@ const VerseDetails = () => {
                         src={`https://www.youtube.com/embed/${verse.youtube_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || ''}`}
                         className="w-full h-full"
                         allowFullScreen
-                        title={`Vídeo: ${verse.title}`}
+                        title={`Vídeo: ${verse.titulo_pt_br}`}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       />
                     </div>
@@ -173,14 +173,14 @@ const VerseDetails = () => {
               {/* Cabeçalho */}
               <div>
                 <span className="inline-block px-3 py-1 text-sm font-medium text-primary bg-primary/10 rounded-full mb-3">
-                  {verse.category}
+                  {verse.estilo?.[0] || ''}
                 </span>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{verse.title}</h1>
-                <p className="text-xl text-gray-600 mb-4">{verse.artist}</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{verse.titulo_pt_br}</h1>
+                <p className="text-xl text-gray-600 mb-4">{verse.musical}</p>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>{(verse.views || 0).toLocaleString()} visualizações</span>
+                  <span>{(verse.visualizacoes || 0).toLocaleString()} visualizações</span>
                   <span>•</span>
-                  <span>{new Date(verse.data).toLocaleDateString('pt-BR')}</span>
+                  <span>{new Date(verse.versionado_em).toLocaleDateString('pt-BR')}</span>
                 </div>
               </div>
 
@@ -192,12 +192,12 @@ const VerseDetails = () => {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Do Musical:</span>
-                    <p className="text-gray-900 font-medium">{verse.musical}</p>
+                    <span className="text-sm font-medium text-gray-600">Origem:</span>
+                    <p className="text-gray-900 font-medium">{verse.origem}</p>
                   </div>
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Música:</span>
-                    <p className="text-gray-900 font-medium">{verse.musica}</p>
+                    <span className="text-sm font-medium text-gray-600">Música de:</span>
+                    <p className="text-gray-900 font-medium">{verse.compositor}</p>
                   </div>
                   {verse.letra_original && (
                     <div>
@@ -205,27 +205,27 @@ const VerseDetails = () => {
                       <p className="text-gray-900">{verse.letra_original}</p>
                     </div>
                   )}
-                  {verse.letra_original_de && (
+                  {verse.letrista && (
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Letra Original de:</span>
-                      <p className="text-gray-900">{verse.letra_original_de}</p>
+                      <span className="text-sm font-medium text-gray-600">Letra original de:</span>
+                      <p className="text-gray-900">{verse.letrista}</p>
                     </div>
                   )}
-                  {verse.versao_brasileira_de && (
+                  {verse.versionista && (
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Versão Brasileira de:</span>
-                      <p className="text-gray-900">{verse.versao_brasileira_de}</p>
+                      <span className="text-sm font-medium text-gray-600">Versão brasileira de:</span>
+                      <p className="text-gray-900">{verse.versionista}</p>
                     </div>
                   )}
-                  {verse.texto_revisado_por && (
+                  {verse.revisao && (
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Texto Revisado por:</span>
-                      <p className="text-gray-900">{verse.texto_revisado_por}</p>
+                      <span className="text-sm font-medium text-gray-600">Texto revisado por:</span>
+                      <p className="text-gray-900">{verse.revisao}</p>
                     </div>
                   )}
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Data:</span>
-                    <p className="text-gray-900">{new Date(verse.data).toLocaleDateString('pt-BR')}</p>
+                    <span className="text-sm font-medium text-gray-600">Versionado em:</span>
+                    <p className="text-gray-900">{new Date(verse.versionado_em).toLocaleDateString('pt-BR')}</p>
                   </div>
                 </div>
               </Card>

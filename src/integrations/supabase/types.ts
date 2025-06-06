@@ -37,83 +37,188 @@ export type Database = {
         Row: {
           artist: string
           category: string
+          compositor: string
           conteudo: string | null
           created_at: string | null
           created_by: string | null
-          data: string
           descricao: string | null
           id: number
           image_url: string | null
           letra_original: string | null
-          letra_original_de: string | null
-          musica: string
-          musical: string
+          letrista: string | null
+          origem: string
+          revisao: string | null
           status: string | null
-          texto_revisado_por: string | null
-          title: string
+          titulo_pt_br: string
           updated_at: string | null
-          versao_brasileira_de: string | null
+          versionado_em: string
+          versionista: string | null
           views: number | null
           youtube_url: string | null
         }
         Insert: {
           artist: string
           category: string
+          compositor: string
           conteudo?: string | null
           created_at?: string | null
           created_by?: string | null
-          data: string
           descricao?: string | null
           id?: number
           image_url?: string | null
           letra_original?: string | null
-          letra_original_de?: string | null
-          musica: string
-          musical: string
+          letrista?: string | null
+          origem: string
+          revisao?: string | null
           status?: string | null
-          texto_revisado_por?: string | null
-          title: string
+          titulo_pt_br: string
           updated_at?: string | null
-          versao_brasileira_de?: string | null
+          versionado_em: string
+          versionista?: string | null
           views?: number | null
           youtube_url?: string | null
         }
         Update: {
           artist?: string
           category?: string
+          compositor?: string
           conteudo?: string | null
           created_at?: string | null
           created_by?: string | null
-          data?: string
           descricao?: string | null
           id?: number
           image_url?: string | null
           letra_original?: string | null
-          letra_original_de?: string | null
-          musica?: string
-          musical?: string
+          letrista?: string | null
+          origem?: string
+          revisao?: string | null
           status?: string | null
-          texto_revisado_por?: string | null
-          title?: string
+          titulo_pt_br?: string
           updated_at?: string | null
-          versao_brasileira_de?: string | null
+          versionado_em?: string
+          versionista?: string | null
           views?: number | null
           youtube_url?: string | null
         }
         Relationships: []
       }
-      Versoes: {
+      versoes: {
         Row: {
+          ano_gravacao: number | null
+          atualizada_em: string | null
+          audio_instrumental: string[] | null
+          audio_original: string | null
+          classificacao_vocal_alt: string[] | null
+          compositor: string[] | null
+          compras: number | null
+          conteudo: string | null
+          coro_feminino: boolean | null
+          coro_masculino: boolean | null
+          criada_em: string | null
+          criada_por: string | null
+          dificuldade: number | null
+          elenco: string | null
+          estilo: string[] | null
           id: number
-          Versoes_Irmas: number | null
+          letra_original: string
+          letrista: string[] | null
+          musical: string
+          musical_alt: string[] | null
+          natureza: string[] | null
+          origem: string | null
+          pdf: string | null
+          revisao: string[] | null
+          solistas_femininos: number | null
+          solistas_masculinos: number | null
+          status: string | null
+          titulo_alt: string[] | null
+          titulo_original: string
+          titulo_pt_br: string
+          url_imagem: string | null
+          valor: number | null
+          versao_brasileira: string | null
+          versionado_em: string | null
+          versionista: string[] | null
+          versoes_irmas: number[] | null
+          visualizacoes: number | null
         }
         Insert: {
+          ano_gravacao?: number | null
+          atualizada_em?: string | null
+          audio_instrumental?: string[] | null
+          audio_original?: string | null
+          classificacao_vocal_alt?: string[] | null
+          compositor?: string[] | null
+          compras?: number | null
+          conteudo?: string | null
+          coro_feminino?: boolean | null
+          coro_masculino?: boolean | null
+          criada_em?: string | null
+          criada_por?: string | null
+          dificuldade?: number | null
+          elenco?: string | null
+          estilo?: string[] | null
           id?: number
-          Versoes_Irmas?: number | null
+          letra_original: string
+          letrista?: string[] | null
+          musical: string
+          musical_alt?: string[] | null
+          natureza?: string[] | null
+          origem?: string | null
+          pdf?: string | null
+          revisao?: string[] | null
+          solistas_femininos?: number | null
+          solistas_masculinos?: number | null
+          status?: string | null
+          titulo_alt?: string[] | null
+          titulo_original: string
+          titulo_pt_br: string
+          url_imagem?: string | null
+          valor?: number | null
+          versao_brasileira?: string | null
+          versionado_em?: string | null
+          versionista?: string[] | null
+          versoes_irmas?: number[] | null
+          visualizacoes?: number | null
         }
         Update: {
+          ano_gravacao?: number | null
+          atualizada_em?: string | null
+          audio_instrumental?: string[] | null
+          audio_original?: string | null
+          classificacao_vocal_alt?: string[] | null
+          compositor?: string[] | null
+          compras?: number | null
+          conteudo?: string | null
+          coro_feminino?: boolean | null
+          coro_masculino?: boolean | null
+          criada_em?: string | null
+          criada_por?: string | null
+          dificuldade?: number | null
+          elenco?: string | null
+          estilo?: string[] | null
           id?: number
-          Versoes_Irmas?: number | null
+          letra_original?: string
+          letrista?: string[] | null
+          musical?: string
+          musical_alt?: string[] | null
+          natureza?: string[] | null
+          origem?: string | null
+          pdf?: string | null
+          revisao?: string[] | null
+          solistas_femininos?: number | null
+          solistas_masculinos?: number | null
+          status?: string | null
+          titulo_alt?: string[] | null
+          titulo_original?: string
+          titulo_pt_br?: string
+          url_imagem?: string | null
+          valor?: number | null
+          versao_brasileira?: string | null
+          versionado_em?: string | null
+          versionista?: string[] | null
+          versoes_irmas?: number[] | null
+          visualizacoes?: number | null
         }
         Relationships: []
       }

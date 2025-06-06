@@ -17,21 +17,22 @@ import { toast } from '@/components/ui/sonner';
 const CreateVerse = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<VerseFormData>({
-    musical: '',
-    musica: '',
+    origem: '',
+    compositor: '',
     letraOriginal: '',
-    letraOriginalDe: '',
-    versaoBrasileiraDE: '',
-    textoRevisadoPor: '',
-    data: new Date().toISOString().split('T')[0],
-    title: '',
-    artist: '',
-    category: '',
+    letrista: '',
+    versionista: '',
+    revisao: '',
+    versionadoEm: new Date().toISOString().split('T')[0],
+    titulo_pt_br: '',
+    musical: '',
+    estilo: '',
     descricao: '',
     conteudo: '',
     youtubeUrl: '',
     imageUrl: '',
-    imageFile: undefined
+    imageFile: undefined,
+    valor: 0
   });
 
   const [isPreview, setIsPreview] = useState(false);
@@ -107,7 +108,7 @@ const CreateVerse = () => {
     e.preventDefault();
     
     // Validação básica
-    if (!formData.title || !formData.artist || !formData.category || !formData.musical || !formData.musica || !formData.data) {
+    if (!formData.titulo_pt_br || !formData.musical || !formData.estilo || !formData.origem || !formData.compositor || !formData.versionadoEm) {
       toast.error('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
@@ -121,16 +122,16 @@ const CreateVerse = () => {
         toast.success('Verso criado com sucesso!');
         // Resetar o formulário
         setFormData({
-          musical: '',
-          musica: '',
+          origem: '',
+          compositor: '',
           letraOriginal: '',
-          letraOriginalDe: '',
-          versaoBrasileiraDE: '',
-          textoRevisadoPor: '',
-          data: new Date().toISOString().split('T')[0],
-          title: '',
-          artist: '',
-          category: '',
+          letrista: '',
+          versionista: '',
+          revisao: '',
+          versionadoEm: new Date().toISOString().split('T')[0],
+          titulo_pt_br: '',
+          musical: '',
+          estilo: '',
           descricao: '',
           conteudo: '',
           youtubeUrl: '',
@@ -229,13 +230,13 @@ const CreateVerse = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="musical" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Do Musical *
+                  <Label htmlFor="origem" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Origem *
                   </Label>
                   <Input
-                    id="musical"
-                    value={formData.musical}
-                    onChange={(e) => handleInputChange('musical', e.target.value)}
+                    id="origem"
+                    value={formData.origem}
+                    onChange={(e) => handleInputChange('origem', e.target.value)}
                     placeholder="Nome do musical"
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
@@ -243,14 +244,14 @@ const CreateVerse = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="musica" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Música *
+                  <Label htmlFor="compositor" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Música de *
                   </Label>
                   <Input
-                    id="musica"
-                    value={formData.musica}
-                    onChange={(e) => handleInputChange('musica', e.target.value)}
-                    placeholder="Nome da música"
+                    id="compositor"
+                    value={formData.compositor}
+                    onChange={(e) => handleInputChange('compositor', e.target.value)}
+                    placeholder="Nome do compositor"
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
                   />
@@ -270,53 +271,53 @@ const CreateVerse = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="letraOriginalDe" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Letra Original de
+                  <Label htmlFor="letrista" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Letra original de
                   </Label>
                   <Input
-                    id="letraOriginalDe"
-                    value={formData.letraOriginalDe}
-                    onChange={(e) => handleInputChange('letraOriginalDe', e.target.value)}
-                    placeholder="Origem da letra original"
+                    id="letrista"
+                    value={formData.letrista}
+                    onChange={(e) => handleInputChange('letrista', e.target.value)}
+                    placeholder="Nome do letrista"
                     className="rounded-lg border-gray-300 focus:border-primary"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="versaoBrasileiraDE" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Versão Brasileira de
+                  <Label htmlFor="versionista" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Versão brasileira de
                   </Label>
                   <Input
-                    id="versaoBrasileiraDE"
-                    value={formData.versaoBrasileiraDE}
-                    onChange={(e) => handleInputChange('versaoBrasileiraDE', e.target.value)}
+                    id="versionista"
+                    value={formData.versionista}
+                    onChange={(e) => handleInputChange('versionista', e.target.value)}
                     placeholder="Responsável pela versão brasileira"
                     className="rounded-lg border-gray-300 focus:border-primary"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="textoRevisadoPor" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Texto Revisado por
+                  <Label htmlFor="revisao" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Texto revisado por
                   </Label>
                   <Input
-                    id="textoRevisadoPor"
-                    value={formData.textoRevisadoPor}
-                    onChange={(e) => handleInputChange('textoRevisadoPor', e.target.value)}
+                    id="revisao"
+                    value={formData.revisao}
+                    onChange={(e) => handleInputChange('revisao', e.target.value)}
                     placeholder="Responsável pela revisão"
                     className="rounded-lg border-gray-300 focus:border-primary"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="data" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Data *
+                  <Label htmlFor="versionadoEm" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Versionado em *
                   </Label>
                   <Input
-                    id="data"
+                    id="versionadoEm"
                     type="date"
-                    value={formData.data}
-                    onChange={(e) => handleInputChange('data', e.target.value)}
+                    value={formData.versionadoEm}
+                    onChange={(e) => handleInputChange('versionadoEm', e.target.value)}
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
                   />
@@ -333,13 +334,13 @@ const CreateVerse = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="title" className="text-sm font-medium text-gray-700 mb-2 block">
+                  <Label htmlFor="titulo_pt_br" className="text-sm font-medium text-gray-700 mb-2 block">
                     Título *
                   </Label>
                   <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => handleInputChange('title', e.target.value)}
+                    id="titulo_pt_br"
+                    value={formData.titulo_pt_br}
+                    onChange={(e) => handleInputChange('titulo_pt_br', e.target.value)}
                     placeholder="Título do verso"
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
@@ -347,35 +348,52 @@ const CreateVerse = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="artist" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Artista *
+                  <Label htmlFor="musical" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Musical *
                   </Label>
                   <Input
-                    id="artist"
-                    value={formData.artist}
-                    onChange={(e) => handleInputChange('artist', e.target.value)}
-                    placeholder="Nome do artista"
+                    id="musical"
+                    value={formData.musical}
+                    onChange={(e) => handleInputChange('musical', e.target.value)}
+                    placeholder="Nome do musical"
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="category" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Categoria *
+                  <Label htmlFor="estilo" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Estilo *
                   </Label>
                   <select
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => handleInputChange('category', e.target.value)}
+                    id="estilo"
+                    value={formData.estilo}
+                    onChange={(e) => handleInputChange('estilo', e.target.value)}
                     className="w-full rounded-lg border-gray-300 focus:border-primary px-3 py-2"
                     required
                   >
-                    <option value="">Selecione uma categoria</option>
+                    <option value="">Selecione um estilo</option>
                     {categories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="valor" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Preço (R$) *
+                  </Label>
+                  <Input
+                    id="valor"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.valor}
+                    onChange={(e) => handleInputChange('valor', e.target.value)}
+                    placeholder="0,00"
+                    className="rounded-lg border-gray-300 focus:border-primary"
+                    required
+                  />
                 </div>
                 
                 <div className="md:col-span-2">

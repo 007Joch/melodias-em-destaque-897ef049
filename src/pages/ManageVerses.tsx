@@ -11,7 +11,7 @@ import { CartProvider } from '@/hooks/useCart';
 
 interface Verse {
   id: string;
-  title: string;
+  titulo_pt_br: string;
   artist: string;
   category: string;
   views: number;
@@ -24,13 +24,13 @@ const ManageVerses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('title');
+  const [sortBy, setSortBy] = useState('titulo_pt_br');
 
   // Dados mockados - serão substituídos por dados reais do Supabase
   const mockVerses: Verse[] = [
     {
       id: '1',
-      title: 'Verso Inspirador 1',
+      titulo_pt_br: 'Verso Inspirador 1',
       artist: 'Artista Gospel',
       category: 'Gospel',
       views: 1250,
@@ -40,7 +40,7 @@ const ManageVerses = () => {
     },
     {
       id: '2',
-      title: 'Melodia Celestial',
+      titulo_pt_br: 'Melodia Celestial',
       artist: 'Coral Divino',
       category: 'Louvor',
       views: 890,
@@ -49,7 +49,7 @@ const ManageVerses = () => {
     },
     {
       id: '3',
-      title: 'Hino de Gratidão',
+      titulo_pt_br: 'Hino de Gratidão',
       artist: 'Ministério Adoração',
       category: 'Adoração',
       views: 2100,
@@ -58,7 +58,7 @@ const ManageVerses = () => {
     },
     {
       id: '4',
-      title: 'Canção da Esperança',
+      titulo_pt_br: 'Canção da Esperança',
       artist: 'Banda Fé',
       category: 'Gospel',
       views: 1750,
@@ -67,7 +67,7 @@ const ManageVerses = () => {
     },
     {
       id: '5',
-      title: 'Salmo Moderno',
+      titulo_pt_br: 'Salmo Moderno',
       artist: 'Grupo Harmonia',
       category: 'Contemporâneo',
       views: 950,
@@ -80,7 +80,7 @@ const ManageVerses = () => {
 
   // Filtrar versos baseado na busca e filtros
   const filteredVerses = mockVerses.filter(verse => {
-    const matchesSearch = verse.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = verse.titulo_pt_br.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          verse.artist.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || verse.category === selectedCategory;
     const matchesStatus = selectedStatus === 'all' || verse.status === selectedStatus;
@@ -91,8 +91,8 @@ const ManageVerses = () => {
   // Ordenar versos
   const sortedVerses = [...filteredVerses].sort((a, b) => {
     switch (sortBy) {
-      case 'title':
-        return a.title.localeCompare(b.title);
+      case 'titulo_pt_br':
+        return a.titulo_pt_br.localeCompare(b.titulo_pt_br);
       case 'artist':
         return a.artist.localeCompare(b.artist);
       case 'views':
@@ -181,7 +181,7 @@ const ManageVerses = () => {
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="title">Título</SelectItem>
+                  <SelectItem value="titulo_pt_br">Título</SelectItem>
                   <SelectItem value="artist">Artista</SelectItem>
                   <SelectItem value="views">Visualizações</SelectItem>
                   <SelectItem value="date">Data de criação</SelectItem>
@@ -249,7 +249,7 @@ const ManageVerses = () => {
                         {/* Imagem do Verso */}
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-primary/10 to-purple-100 flex items-center justify-center">
                           {verse.image ? (
-                            <img src={verse.image} alt={verse.title} className="w-full h-full object-cover" />
+                            <img src={verse.image} alt={verse.titulo_pt_br} className="w-full h-full object-cover" />
                           ) : (
                             <Music className="w-6 h-6 text-primary/60" />
                           )}
@@ -258,7 +258,7 @@ const ManageVerses = () => {
                         {/* Informações do Verso */}
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="font-semibold text-gray-900">{verse.title}</h3>
+                            <h3 className="font-semibold text-gray-900">{verse.titulo_pt_br}</h3>
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               verse.status === 'active' 
                                 ? 'bg-green-100 text-green-800' 

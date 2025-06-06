@@ -15,11 +15,11 @@ const MusicGrid = () => {
 
   const fetchVerses = useCallback(async () => {
     try {
-      console.log('Iniciando busca de versos...');
+      console.log('Iniciando busca de versos da tabela versoes...');
       setIsLoading(true);
       setError(null);
       const data = await getAllVerses();
-      console.log('Versos carregados:', data);
+      console.log('Versos carregados da tabela versoes:', data);
       setVerses(data);
     } catch (err) {
       console.error('Erro ao carregar versos:', err);
@@ -112,8 +112,8 @@ const MusicGrid = () => {
             <MusicCard
               key={verse.id}
               id={verse.id}
-              title={verse.titulo_pt_br || ''}
-              artist={verse.musical || ''}
+              title={verse.titulo_original || verse.titulo_pt_br || 'Título não informado'}
+              artist={verse.musical || 'Artista não informado'}
               image={verse.url_imagem || undefined}
               category={verse.estilo?.[0] || 'Musical'}
               views={verse.visualizacoes || 0}

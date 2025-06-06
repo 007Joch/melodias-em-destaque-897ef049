@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft, Save, Eye, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -396,6 +395,9 @@ const CreateVerse = () => {
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
                   />
+                  <div className="mt-1 text-xs text-gray-500">
+                    Insira o valor em reais (ex: 15.99 para R$ 15,99)
+                  </div>
                 </div>
                 
                 <div className="md:col-span-2">

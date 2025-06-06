@@ -27,8 +27,16 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
       title,
       artist,
       category,
-      image
+      image: image || '/placeholder.svg'
     });
+  };
+
+  // Função para formatar o preço em reais brasileiros
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
   };
 
   return (
@@ -69,13 +77,16 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
           <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm sm:text-base hover:text-primary transition-colors">{title}</h3>
         </Link>
         <p className="text-xs sm:text-sm text-gray-600 mb-2">{artist}</p>
-        {views !== undefined && views > 0 && (
-          <p className="text-xs text-gray-500 mb-2">{views.toLocaleString()} visualizações</p>
-        )}
         
-        {price !== undefined && price > 0 && (
-          <p className="text-sm font-semibold text-primary mb-3">R$ {price.toFixed(2).replace('.', ',')}</p>
-        )}
+        <div className="flex items-center justify-between mb-3">
+          {views !== undefined && views > 0 && (
+            <p className="text-xs text-gray-500">{views.toLocaleString()} visualizações</p>
+          )}
+          
+          {price !== undefined && price > 0 && (
+            <p className="text-sm font-bold text-primary">{formatPrice(price)}</p>
+          )}
+        </div>
         
         <Button 
           onClick={handleAddToCart}

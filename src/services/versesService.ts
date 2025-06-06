@@ -231,6 +231,7 @@ export const getAllVerses = async (): Promise<Verse[]> => {
     const { data, error } = await supabase
       .from('versoes')
       .select('*')
+      .eq('status', 'active')
       .order('criada_em', { ascending: false });
 
     if (error) {
@@ -238,7 +239,8 @@ export const getAllVerses = async (): Promise<Verse[]> => {
       throw error;
     }
     
-    console.log('Versos encontrados:', data?.length || 0);
+    console.log('Versos encontrados na tabela versoes:', data?.length || 0);
+    console.log('Exemplo de dados:', data?.[0]);
     return data || [];
   } catch (error) {
     console.error('Erro geral ao buscar versos:', error);

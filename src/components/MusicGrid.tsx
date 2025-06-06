@@ -13,13 +13,13 @@ const MusicGrid = () => {
   const [error, setError] = useState<string | null>(null);
   const [displayCount, setDisplayCount] = useState(8);
 
-  const [hasInitialized, setHasInitialized] = useState(false);
-
-  const fetchVerses = async () => {
+  const fetchVerses = useCallback(async () => {
     try {
+      console.log('Iniciando busca de versos...');
       setIsLoading(true);
       setError(null);
       const data = await getAllVerses();
+      console.log('Versos carregados:', data);
       setVerses(data);
     } catch (err) {
       console.error('Erro ao carregar versos:', err);
@@ -27,14 +27,11 @@ const MusicGrid = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (!hasInitialized) {
-      setHasInitialized(true);
-      fetchVerses();
-    }
-  }, []);
+    fetchVerses();
+  }, [fetchVerses]);
 
   const handleLoadMore = useCallback(() => {
     setDisplayCount(prev => prev + 8);
@@ -117,7 +114,7 @@ const MusicGrid = () => {
               id={verse.id}
               title={verse.titulo_pt_br || ''}
               artist={verse.musical || ''}
-              image={verse.url_imagem || '/musical-generic.svg'}
+              image={verse.url_imagem || undefined}
               category={verse.estilo?.[0] || 'Musical'}
               views={verse.visualizacoes || 0}
               price={verse.valor || 0}

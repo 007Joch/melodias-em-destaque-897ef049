@@ -19,6 +19,8 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
   const { addToCart } = useCart();
   const verseId = id ? String(id) : `${title}-${artist}`.toLowerCase().replace(/\s+/g, '-');
 
+  console.log('Renderizando MusicCard:', { id, title, artist, image, category, views, price });
+
   const handleAddToCart = () => {
     addToCart({
       id: verseId,
@@ -37,6 +39,10 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
             src={image}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              console.log('Erro ao carregar imagem:', image);
+              e.currentTarget.style.display = 'none';
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-purple-100">
@@ -63,11 +69,11 @@ const MusicCard = ({ id, title, artist, image, category, views, price }: MusicCa
           <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm sm:text-base hover:text-primary transition-colors">{title}</h3>
         </Link>
         <p className="text-xs sm:text-sm text-gray-600 mb-2">{artist}</p>
-        {views && (
+        {views !== undefined && views > 0 && (
           <p className="text-xs text-gray-500 mb-2">{views.toLocaleString()} visualizações</p>
         )}
         
-        {price && (
+        {price !== undefined && price > 0 && (
           <p className="text-sm font-semibold text-primary mb-3">R$ {price.toFixed(2).replace('.', ',')}</p>
         )}
         

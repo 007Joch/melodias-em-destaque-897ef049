@@ -226,18 +226,24 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 
 // Função para buscar todos os versos
 export const getAllVerses = async (): Promise<Verse[]> => {
-  const { data, error } = await supabase
-    .from('versoes')
-    .select('*')
-    .eq('status', 'active')
-    .order('criada_em', { ascending: false });
+  try {
+    console.log('Buscando todos os versos da tabela versoes...');
+    const { data, error } = await supabase
+      .from('versoes')
+      .select('*')
+      .order('criada_em', { ascending: false });
 
-  if (error) {
-    console.error('Erro ao buscar versos:', error);
+    if (error) {
+      console.error('Erro ao buscar versos:', error);
+      throw error;
+    }
+    
+    console.log('Versos encontrados:', data?.length || 0);
+    return data || [];
+  } catch (error) {
+    console.error('Erro geral ao buscar versos:', error);
     throw error;
   }
-  
-  return data || [];
 };
 
 // Função para buscar um verso por ID

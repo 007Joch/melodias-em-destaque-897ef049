@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Plus, Share2, Heart, Video, Loader2 } from "lucide-react";
@@ -89,8 +90,8 @@ const VerseDetails = () => {
   const handleAddToCart = () => {
     addToCart({
       id: verse.id.toString(),
-      title: verse.titulo_pt_br,
-      artist: verse.musical,
+      title: verse.titulo_pt_br || '',
+      artist: verse.musical || '',
       category: verse.estilo?.[0] || '',
       image: verse.url_imagem || '/placeholder.svg'
     });
@@ -98,6 +99,13 @@ const VerseDetails = () => {
 
   const handleGoBack = () => {
     navigate(-1);
+  };
+
+  // Extrair ID do YouTube se houver URL do YouTube nos dados
+  const getYouTubeId = (url: string | null) => {
+    if (!url) return null;
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    return match ? match[1] : null;
   };
 
   return (
@@ -119,7 +127,7 @@ const VerseDetails = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Vídeo do YouTube */}
             <div className="space-y-4">
-              {verse.youtube_url && (
+              {verse.audio_original && getYouTubeId(verse.audio_original) && (
                 <Card className="overflow-hidden rounded-xl border-0 shadow-lg">
                   <div className="p-6 bg-gradient-to-br from-red-50 to-pink-50">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -128,7 +136,7 @@ const VerseDetails = () => {
                     </h2>
                     <div className="aspect-video w-full rounded-lg overflow-hidden">
                       <iframe
-                        src={`https://www.youtube.com/embed/${verse.youtube_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || ''}`}
+                        src={`https://www.youtube.com/embed/${getYouTubeId(verse.audio_original)}`}
                         className="w-full h-full"
                         allowFullScreen
                         title={`Vídeo: ${verse.titulo_pt_br}`}
@@ -173,14 +181,14 @@ const VerseDetails = () => {
               {/* Cabeçalho */}
               <div>
                 <span className="inline-block px-3 py-1 text-sm font-medium text-primary bg-primary/10 rounded-full mb-3">
-                  {verse.estilo?.[0] || ''}
+                  {verse.estilo?.[0] || 'Musical'}
                 </span>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{verse.titulo_pt_br}</h1>
                 <p className="text-xl text-gray-600 mb-4">{verse.musical}</p>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                   <span>{(verse.visualizacoes || 0).toLocaleString()} visualizações</span>
                   <span>•</span>
-                  <span>{new Date(verse.versionado_em).toLocaleDateString('pt-BR')}</span>
+                  <span>{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não informada'}</span>
                 </div>
               </div>
 
@@ -193,11 +201,11 @@ const VerseDetails = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm font-medium text-gray-600">Origem:</span>
-                    <p className="text-gray-900 font-medium">{verse.origem}</p>
+                    <p className="text-gray-900 font-medium">{verse.origem || 'Não informado'}</p>
                   </div>
                   <div>
                     <span className="text-sm font-medium text-gray-600">Música de:</span>
-                    <p className="text-gray-900 font-medium">{verse.compositor}</p>
+                    <p className="text-gray-900 font-medium">{verse.compositor?.[0] || 'Não informado'}</p>
                   </div>
                   {verse.letra_original && (
                     <div>
@@ -205,38 +213,30 @@ const VerseDetails = () => {
                       <p className="text-gray-900">{verse.letra_original}</p>
                     </div>
                   )}
-                  {verse.letrista && (
+                  {verse.letrista?.[0] && (
                     <div>
                       <span className="text-sm font-medium text-gray-600">Letra original de:</span>
-                      <p className="text-gray-900">{verse.letrista}</p>
+                      <p className="text-gray-900">{verse.letrista[0]}</p>
                     </div>
                   )}
-                  {verse.versionista && (
+                  {verse.versionista?.[0] && (
                     <div>
                       <span className="text-sm font-medium text-gray-600">Versão brasileira de:</span>
-                      <p className="text-gray-900">{verse.versionista}</p>
+                      <p className="text-gray-900">{verse.versionista[0]}</p>
                     </div>
                   )}
-                  {verse.revisao && (
+                  {verse.revisao?.[0] && (
                     <div>
                       <span className="text-sm font-medium text-gray-600">Texto revisado por:</span>
-                      <p className="text-gray-900">{verse.revisao}</p>
+                      <p className="text-gray-900">{verse.revisao[0]}</p>
                     </div>
                   )}
                   <div>
                     <span className="text-sm font-medium text-gray-600">Versionado em:</span>
-                    <p className="text-gray-900">{new Date(verse.versionado_em).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-gray-900">{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não informada'}</p>
                   </div>
                 </div>
               </Card>
-
-              {/* Descrição */}
-              {verse.descricao && (
-                <Card className="p-6 border-0 bg-gray-50 rounded-xl">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-3">Sobre este verso</h2>
-                  <p className="text-gray-700 leading-relaxed">{verse.descricao}</p>
-                </Card>
-              )}
 
               {/* Conteúdo Formatado */}
               <Card className="p-6 border-0 bg-gradient-to-br from-primary/5 to-purple-50 rounded-xl">

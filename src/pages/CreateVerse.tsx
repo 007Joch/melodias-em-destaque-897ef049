@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft, Save, Eye, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -136,7 +137,8 @@ const CreateVerse = () => {
           conteudo: '',
           youtubeUrl: '',
           imageUrl: '',
-          imageFile: undefined
+          imageFile: undefined,
+          valor: 0
         });
         setImagePreview('');
         // Navegar para a homepage para ver o novo verso

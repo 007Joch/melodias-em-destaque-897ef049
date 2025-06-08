@@ -123,7 +123,7 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     
     // Criar nome único para o arquivo
     const fileExtension = 'jpg';
-    const uniqueFileName = `${fileName}_${Date.now()}.${fileExtension}`;
+    let uniqueFileName = `${fileName}_${Date.now()}.${fileExtension}`;
     console.log('📁 Nome único do arquivo:', uniqueFileName);
     
     // Tentar fazer upload com diferentes estratégias
@@ -141,10 +141,11 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     if (uploadResult.error) {
       console.warn('⚠️ Primeira tentativa falhou:', uploadResult.error);
       
-      // Segunda tentativa: com upsert false
+      // Segunda tentativa: com upsert false e novo nome
+      uniqueFileName = `alt_${uniqueFileName}`;
       uploadResult = await supabase.storage
         .from('capas')
-        .upload(`alt_${uniqueFileName}`, resizedFile, {
+        .upload(uniqueFileName, resizedFile, {
           cacheControl: '3600',
           upsert: false,
           contentType: 'image/jpeg'
@@ -153,8 +154,6 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
       if (uploadResult.error) {
         console.error('❌ Segunda tentativa também falhou:', uploadResult.error);
         throw new Error(`Erro no upload: ${uploadResult.error.message}`);
-      } else {
-        uniqueFileName = `alt_${uniqueFileName}`;
       }
     }
 

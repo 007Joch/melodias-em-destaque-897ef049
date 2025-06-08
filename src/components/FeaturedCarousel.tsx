@@ -15,21 +15,24 @@ const FeaturedCarousel = () => {
       title: "Bohemian Rhapsody",
       artist: "Queen",
       image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
-      category: "Clássico Rock"
+      category: "Clássico Rock",
+      price: 9.99
     },
     {
       id: 2,
       title: "Imagine",
       artist: "John Lennon",
       image: "https://images.unsplash.com/photo-1415886541506-6efc5e4b1786?w=400&h=400&fit=crop",
-      category: "Folk Rock"
+      category: "Folk Rock",
+      price: 7.99
     },
     {
       id: 3,
       title: "Hotel California",
       artist: "Eagles",
       image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
-      category: "Rock"
+      category: "Rock",
+      price: 8.99
     }
   ];
 
@@ -39,7 +42,8 @@ const FeaturedCarousel = () => {
       title: item.title,
       artist: item.artist,
       category: item.category,
-      image: item.image
+      image: item.image,
+      price: item.price
     });
   };
 

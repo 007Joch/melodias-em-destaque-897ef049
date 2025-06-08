@@ -11,8 +11,9 @@ interface CartDrawerProps {
 }
 
 const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
-  const { items, removeFromCart, updateQuantity, clearCart, getTotalItems } = useCart();
+  const { items, removeFromCart, updateQuantity, clearCart, getTotalItems, getTotalPrice } = useCart();
   const totalItems = getTotalItems();
+  const totalPrice = getTotalPrice();
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -50,9 +51,14 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
                       <p className="text-sm text-gray-600">{item.artist}</p>
-                      <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full mt-1">
-                        {item.category}
-                      </span>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
+                          {item.category}
+                        </span>
+                        <span className="font-medium text-primary">
+                          R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                        </span>
+                      </div>
                       
                       {/* Controles de quantidade */}
                       <div className="flex items-center justify-between mt-3">
@@ -93,6 +99,19 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
               </div>
 
               <Separator className="my-4" />
+
+              {/* Resumo do pedido */}
+              <div className="mb-4">
+                <h3 className="font-medium text-gray-900 mb-3">Resumo do pedido</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-medium">R$ {totalPrice.toFixed(2).replace('.', ',')}</span>
+                </div>
+                <div className="flex justify-between items-center font-bold text-lg">
+                  <span>Total</span>
+                  <span className="text-primary">R$ {totalPrice.toFixed(2).replace('.', ',')}</span>
+                </div>
+              </div>
 
               {/* Ações do carrinho */}
               <div className="space-y-3">

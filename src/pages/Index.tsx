@@ -1,7 +1,7 @@
 
+import React from "react";
 import Header from "@/components/Header";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
-import FilterBar from "@/components/FilterBar";
 import MusicGrid from "@/components/MusicGrid";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/hooks/useCart";
@@ -13,10 +13,7 @@ const Index = () => {
         <Header />
         <main>
           <FeaturedCarousel />
-          <div className="container mx-auto px-4 sm:px-6">
-            <FilterBar />
-            <MusicGrid />
-          </div>
+          <MusicGrid />
         </main>
         <Footer />
       </div>

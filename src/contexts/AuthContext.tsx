@@ -37,6 +37,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (error) {
             console.error("Erro ao buscar perfil:", error);
+            // Se o perfil não existe, verificar se é um dos admins conhecidos
+            if (error.code === 'PGRST116') {
+              const adminEmails = ['joabychaves@gmail.com', 'rafoliveira@gmail.com']; // Emails dos administradores
+              const userEmail = currentSession.user.email;
+              const isAdmin = adminEmails.includes(userEmail || '');
+              
+              const { data: newProfile, error: createError } = await supabase
+                .from("profiles")
+                .insert([
+                  {
+                    id: currentSession.user.id,
+                    name: currentSession.user.user_metadata?.name || 'Usuário',
+                    role: isAdmin ? 'admin' : 'cliente',
+                  },
+                ])
+                .select()
+                .single();
+              
+              if (createError) {
+                console.error("Erro ao criar perfil automaticamente:", createError);
+              } else {
+                setProfile(newProfile);
+              }
+            }
           } else {
             setProfile(data);
           }
@@ -65,6 +89,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (error) {
             console.error("Erro ao buscar perfil:", error);
+            // Se o perfil não existe, verificar se é um dos admins conhecidos
+            if (error.code === 'PGRST116') {
+              const adminEmails = ['joabychaves@gmail.com', 'rafoliveira@gmail.com']; // Emails dos administradores
+              const userEmail = currentSession.user.email;
+              const isAdmin = adminEmails.includes(userEmail || '');
+              
+              const { data: newProfile, error: createError } = await supabase
+                .from("profiles")
+                .insert([
+                  {
+                    id: currentSession.user.id,
+                    name: currentSession.user.user_metadata?.name || 'Usuário',
+                    role: isAdmin ? 'admin' : 'cliente',
+                  },
+                ])
+                .select()
+                .single();
+              
+              if (createError) {
+                console.error("Erro ao criar perfil automaticamente:", createError);
+              } else {
+                setProfile(newProfile);
+              }
+            }
           } else {
             setProfile(data);
           }
@@ -118,13 +166,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
       });
 
-      // Se o cadastro for bem-sucedido, criar perfil do usuário
+      // Se o cadastro for bem-sucedido, criar perfil do usuário como cliente
       if (result.data?.user) {
         const { error } = await supabase.from("profiles").insert([
           {
             id: result.data.user.id,
             name,
-            email,
+            role: 'cliente', // Novos usuários são clientes por padrão
           },
         ]);
 

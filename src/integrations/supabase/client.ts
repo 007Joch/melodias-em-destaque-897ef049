@@ -8,9 +8,14 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // Desabilitar para evitar conflitos
     flowType: "implicit",
-    debug: true,
+    debug: false, // Desabilitar debug para reduzir logs
     // Removida a propriedade skipEmailVerification que não é mais suportada
   },
+  global: {
+    headers: {
+      'X-Client-Info': 'musical-em-bom-portugues'
+    }
+  }
 });

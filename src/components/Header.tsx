@@ -1,20 +1,85 @@
 
+import React from "react";
 import { Search, User, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuthHook";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import CartDrawer from "./CartDrawer";
 import MobileMenu from "./MobileMenu";
+import SearchResults from "./SearchResults";
+import { searchVerses, Verse } from "../services/versesService";
 
 const Header = () => {
   const { getTotalItems } = useCart();
   const { user } = useAuth();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<{ exact: Verse | null, similar: Verse[] }>({ exact: null, similar: [] });
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const totalItems = getTotalItems();
+
+  // Função para realizar a busca
+  const handleSearch = async (term: string) => {
+    if (!term.trim()) {
+      setSearchResults({ exact: null, similar: [] });
+      setShowResults(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchVerses(term, 8);
+      setSearchResults(results);
+      setShowResults(true);
+    } catch (error) {
+      console.error('Erro na busca:', error);
+      setSearchResults({ exact: null, similar: [] });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Debounce para a busca
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm) {
+        handleSearch(searchTerm);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Fechar resultados ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      handleSearch(searchTerm);
+    }
+  };
+
+  const closeSearchResults = () => {
+    setShowResults(false);
+    setSearchTerm('');
+    setSearchResults({ exact: null, similar: [] });
+  };
 
   return (
     <>
@@ -36,20 +101,37 @@ const Header = () => {
             </div>
 
             {/* Barra de Busca Central - Hidden on mobile, visible on tablet+ */}
-            <div className="hidden md:flex flex-1 max-w-2xl mx-4 lg:mx-8">
+            <div className="hidden md:flex flex-1 max-w-2xl mx-4 lg:mx-8" ref={searchRef}>
               <div className="relative w-full">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  type="text"
-                  placeholder="Procure por músicas, artistas, letras..."
-                  className="w-full pl-12 pr-4 py-3 text-lg bg-gray-50 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-                />
-                <Button
-                  size="sm"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full bg-primary hover:bg-primary/90"
-                >
-                  <Search className="w-4 h-4" />
-                </Button>
+                <form onSubmit={handleSearchSubmit} className="w-full">
+                  <Input
+                    type="text"
+                    placeholder="Procure por músicas, artistas, letras..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onFocus={() => searchTerm && setShowResults(true)}
+                    className="w-full pl-12 pr-16 py-3 text-lg bg-gray-50 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isSearching}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full bg-primary hover:bg-primary/90"
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
+                </form>
+                
+                {/* Resultados da Busca */}
+                {showResults && (
+                  <SearchResults
+                    searchTerm={searchTerm}
+                    exactMatch={searchResults.exact}
+                    similarResults={searchResults.similar}
+                    onClose={closeSearchResults}
+                  />
+                )}
               </div>
             </div>
 
@@ -87,19 +169,36 @@ const Header = () => {
 
           {/* Barra de Busca Mobile - Visible only on mobile */}
           <div className="md:hidden mt-3">
-            <div className="relative">
+            <div className="relative" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                type="text"
-                placeholder="Procurar músicas..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-              />
-              <Button
-                size="sm"
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-full bg-primary hover:bg-primary/90 h-8 w-8 p-0"
-              >
-                <Search className="w-3 h-3" />
-              </Button>
+              <form onSubmit={handleSearchSubmit} className="w-full">
+                <Input
+                  type="text"
+                  placeholder="Procurar músicas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => searchTerm && setShowResults(true)}
+                  className="w-full pl-10 pr-12 py-2 bg-gray-50 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isSearching}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-full bg-primary hover:bg-primary/90 h-8 w-8 p-0"
+                >
+                  <Search className="w-3 h-3" />
+                </Button>
+              </form>
+              
+              {/* Resultados da Busca Mobile */}
+              {showResults && (
+                <SearchResults
+                  searchTerm={searchTerm}
+                  exactMatch={searchResults.exact}
+                  similarResults={searchResults.similar}
+                  onClose={closeSearchResults}
+                />
+              )}
             </div>
           </div>
         </div>

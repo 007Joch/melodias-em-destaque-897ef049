@@ -17,7 +17,6 @@ import { toast } from '@/components/ui/sonner';
 const CreateVerse = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<VerseFormData>({
-    origem: '',
     compositor: '',
     letraOriginal: '',
     letrista: '',
@@ -25,11 +24,11 @@ const CreateVerse = () => {
     revisao: '',
     versionadoEm: new Date().toISOString().split('T')[0],
     titulo_pt_br: '',
+    titulo_original: '',
     musical: '',
     estilo: '',
-    descricao: '',
     conteudo: '',
-    youtubeUrl: '',
+    audioOriginal: '',
     imageUrl: '',
     imageFile: undefined,
     valor: 0
@@ -39,6 +38,7 @@ const CreateVerse = () => {
   const [imagePreview, setImagePreview] = useState<string>('');
   const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState(0);
 
   const categories = ['Gospel', 'Louvor', 'Adoração', 'Contemporâneo', 'Teatro Musical', 'Clássico'];
 
@@ -65,10 +65,21 @@ const CreateVerse = () => {
   ];
 
   const handleInputChange = (field: keyof VerseFormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    // Tratamento especial para o campo valor (aceitar vírgula e ponto)
+    if (field === 'valor') {
+      // Substituir vírgula por ponto e converter para número
+      const normalizedValue = value.replace(',', '.');
+      const numericValue = parseFloat(normalizedValue) || 0;
+      setFormData(prev => ({
+        ...prev,
+        [field]: numericValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,15 +115,33 @@ const CreateVerse = () => {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+    
+    const now = Date.now();
+    
+    // Prevenir múltiplas submissões (mínimo 3 segundos entre tentativas)
+    if (isLoading) {
+      console.log('Submissão já em andamento, ignorando...');
+      toast.error('Aguarde, operação em andamento...');
+      return;
+    }
+    
+    if (now - lastSubmitTime < 3000) {
+      console.log('Tentativa muito rápida, ignorando...');
+      toast.error('Aguarde pelo menos 3 segundos entre tentativas.');
+      return;
+    }
+    
+    setLastSubmitTime(now);
     
     // Validação básica
-    if (!formData.titulo_pt_br || !formData.musical || !formData.estilo || !formData.origem || !formData.compositor || !formData.versionadoEm) {
+    if (!formData.titulo_pt_br || !formData.musical || !formData.estilo || !formData.compositor || !formData.versionadoEm) {
       toast.error('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
     
+    console.log('Iniciando submissão do formulário...');
     setIsLoading(true);
     
     try {
@@ -122,22 +151,22 @@ const CreateVerse = () => {
         toast.success('Verso criado com sucesso!');
         // Resetar o formulário
         setFormData({
-          origem: '',
-          compositor: '',
-          letraOriginal: '',
-          letrista: '',
-          versionista: '',
-          revisao: '',
-          versionadoEm: new Date().toISOString().split('T')[0],
-          titulo_pt_br: '',
-          musical: '',
-          estilo: '',
-          descricao: '',
-          conteudo: '',
-          youtubeUrl: '',
-          imageUrl: '',
-          imageFile: undefined
-        });
+      compositor: '',
+      letraOriginal: '',
+      letrista: '',
+      versionista: '',
+      revisao: '',
+      versionadoEm: new Date().toISOString().split('T')[0],
+      titulo_pt_br: '',
+      titulo_original: '',
+      musical: '',
+      estilo: '',
+      conteudo: '',
+      audioOriginal: '',
+      imageUrl: '',
+      imageFile: undefined,
+      valor: 0
+    });
         setImagePreview('');
         // Navegar para a homepage para ver o novo verso
         setTimeout(() => {
@@ -155,11 +184,20 @@ const CreateVerse = () => {
         navigate('/login');
       } else if (error.message && error.message.includes('RLS')) {
         toast.error('Erro de permissão. Verifique se você tem acesso para criar versos.');
+      } else if (error.message && error.message.includes('operação em andamento')) {
+        toast.error('Aguarde, já existe uma operação em andamento.');
+      } else if (error.message && error.message.includes('Timeout')) {
+        toast.error('A operação demorou muito para ser concluída. Tente novamente.');
       } else {
-        toast.error('Erro ao salvar verso. Verifique sua conexão e tente novamente.');
+        toast.error(`Erro ao salvar verso: ${error.message || 'Erro desconhecido'}`);
       }
     } finally {
+      console.log('Finalizando submissão do formulário...');
       setIsLoading(false);
+      // Garantir que o estado seja limpo mesmo em caso de erro
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 1000);
     }
   };
 
@@ -200,8 +238,8 @@ const CreateVerse = () => {
                 Visualizar
               </Button>
               <Button 
-                type="submit" 
-                form="verse-form"
+                type="button" 
+                onClick={handleSubmit}
                 className="bg-primary hover:bg-primary/90 rounded-full"
                 disabled={isLoading}
               >
@@ -220,7 +258,7 @@ const CreateVerse = () => {
             </div>
           </div>
 
-          <form id="verse-form" onSubmit={handleSubmit} className="space-y-8">
+          <form id="verse-form" className="space-y-8">
             {/* Informações do Musical */}
             <Card className="p-6 border-0 shadow-sm">
               <div className="flex items-center space-x-2 mb-6">
@@ -229,20 +267,7 @@ const CreateVerse = () => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="origem" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Origem *
-                  </Label>
-                  <Input
-                    id="origem"
-                    value={formData.origem}
-                    onChange={(e) => handleInputChange('origem', e.target.value)}
-                    placeholder="Nome do musical"
-                    className="rounded-lg border-gray-300 focus:border-primary"
-                    required
-                  />
-                </div>
-                
+
                 <div>
                   <Label htmlFor="compositor" className="text-sm font-medium text-gray-700 mb-2 block">
                     Música de *
@@ -335,15 +360,28 @@ const CreateVerse = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="titulo_pt_br" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Título *
+                    Título em Português *
                   </Label>
                   <Input
                     id="titulo_pt_br"
                     value={formData.titulo_pt_br}
                     onChange={(e) => handleInputChange('titulo_pt_br', e.target.value)}
-                    placeholder="Título do verso"
+                    placeholder="Título traduzido do verso"
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="titulo_original" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Título Original
+                  </Label>
+                  <Input
+                    id="titulo_original"
+                    value={formData.titulo_original}
+                    onChange={(e) => handleInputChange('titulo_original', e.target.value)}
+                    placeholder="Título original do verso"
+                    className="rounded-lg border-gray-300 focus:border-primary"
                   />
                 </div>
                 
@@ -529,38 +567,24 @@ const CreateVerse = () => {
                 </div>
               </div>
               
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="mt-6">
                 <div>
-                  <Label htmlFor="descricao" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Descrição
-                  </Label>
-                  <Textarea
-                    id="descricao"
-                    value={formData.descricao}
-                    onChange={(e) => handleInputChange('descricao', e.target.value)}
-                    placeholder="Descrição do verso musical..."
-                    className="rounded-lg border-gray-300 focus:border-primary min-h-[100px]"
-                    rows={4}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="youtubeUrl" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Vídeo do YouTube
+                  <Label htmlFor="audioOriginal" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Áudio Original
                   </Label>
                   <Input
-                    id="youtubeUrl"
-                    value={formData.youtubeUrl}
-                    onChange={(e) => handleInputChange('youtubeUrl', e.target.value)}
+                    id="audioOriginal"
+                    value={formData.audioOriginal}
+                    onChange={(e) => handleInputChange('audioOriginal', e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
                     className="rounded-lg border-gray-300 focus:border-primary"
                   />
-                  {formData.youtubeUrl && extractYouTubeId(formData.youtubeUrl) && (
+                  {formData.audioOriginal && extractYouTubeId(formData.audioOriginal) && (
                     <div className="mt-3">
                       <p className="text-sm text-green-600 mb-2">✓ Vídeo válido detectado</p>
                       <div className="aspect-video w-full max-w-sm">
                         <iframe
-                          src={`https://www.youtube.com/embed/${extractYouTubeId(formData.youtubeUrl)}`}
+                          src={`https://www.youtube.com/embed/${extractYouTubeId(formData.audioOriginal)}`}
                           className="w-full h-full rounded-lg"
                           allowFullScreen
                           title="Preview do vídeo"
@@ -568,7 +592,7 @@ const CreateVerse = () => {
                       </div>
                     </div>
                   )}
-                  {formData.youtubeUrl && !extractYouTubeId(formData.youtubeUrl) && (
+                  {formData.audioOriginal && !extractYouTubeId(formData.audioOriginal) && (
                     <p className="text-sm text-red-600 mt-2">⚠ URL do YouTube inválida</p>
                   )}
                 </div>

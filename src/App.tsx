@@ -6,14 +6,29 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/hooks/useCart";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import ManageVerses from "./pages/ManageVerses";
-import CreateVerse from "./pages/CreateVerse";
-import VerseDetails from "./pages/VerseDetails";
-import NotFound from "./pages/NotFound";
+import { lazy, Suspense } from "react";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
-const queryClient = new QueryClient();
+// Lazy loading dos componentes
+const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
+const ManageVerses = lazy(() => import("./pages/ManageVerses"));
+const CreateVerse = lazy(() => import("./pages/CreateVerse"));
+const EditVerse = lazy(() => import("./pages/EditVerse"));
+const VerseDetails = lazy(() => import("./pages/VerseDetails"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Configuração do QueryClient com cache otimizado
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutos
+      gcTime: 10 * 60 * 1000, // 10 minutos
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -23,14 +38,18 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/manage-verses" element={<ManageVerses />} />
-              <Route path="/create-verse" element={<CreateVerse />} />
-              <Route path="/verse/:id" element={<VerseDetails />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/manage-verses" element={<ManageVerses />} />
+                <Route path="/create-verse" element={<CreateVerse />} />
+                <Route path="/edit-verse/:id" element={<EditVerse />} />
+                <Route path="/verse/:id" element={<VerseDetails />} />
+                <Route path="/:slug" element={<VerseDetails />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </CartProvider>
       </AuthProvider>

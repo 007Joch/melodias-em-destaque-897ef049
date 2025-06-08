@@ -7,8 +7,9 @@ interface CartItem {
   title: string;
   artist: string;
   category: string;
-  image?: string;
+  image: string;
   quantity: number;
+  price: number;
 }
 
 interface CartContextType {
@@ -71,6 +72,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return items.reduce((total, item) => total + item.quantity, 0);
   };
 
+  const getTotalPrice = () => {
+    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
   const clearCart = () => {
     setItems([]);
   };
@@ -82,6 +87,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       removeFromCart,
       updateQuantity,
       getTotalItems,
+      getTotalPrice,
       clearCart
     }}>
       {children}

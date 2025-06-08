@@ -1,9 +1,22 @@
 
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { List, Filter } from "lucide-react";
 
-const FilterBar = () => {
+interface FilterBarProps {
+  onCategoryChange?: (category: string) => void;
+  onStyleChange?: (style: string) => void;
+  onSortChange?: (sort: string) => void;
+  onClearFilters?: () => void;
+}
+
+const FilterBar: React.FC<FilterBarProps> = ({
+  onCategoryChange,
+  onStyleChange,
+  onSortChange,
+  onClearFilters
+}) => {
   const categories = [
     "Todas as Categorias",
     "Rock",
@@ -12,6 +25,23 @@ const FilterBar = () => {
     "Sertanejo",
     "Hip Hop",
     "Folk",
+    "Eletrônica",
+    "Drama Musical",
+    "Animação",
+    "Teatro Musical"
+  ];
+
+  const styles = [
+    "Todos os Estilos",
+    "Clássico",
+    "Contemporâneo",
+    "Rock",
+    "Pop",
+    "Jazz",
+    "Folk",
+    "Hip Hop",
+    "R&B",
+    "Country",
     "Eletrônica"
   ];
 
@@ -32,7 +62,7 @@ const FilterBar = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-          <Select defaultValue="all">
+          <Select defaultValue="all" onValueChange={onCategoryChange}>
             <SelectTrigger className="w-full sm:w-48 bg-gray-50 border-0 rounded-full text-sm">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
@@ -45,7 +75,20 @@ const FilterBar = () => {
             </SelectContent>
           </Select>
 
-          <Select defaultValue="popular">
+          <Select defaultValue="all-styles" onValueChange={onStyleChange}>
+            <SelectTrigger className="w-full sm:w-48 bg-gray-50 border-0 rounded-full text-sm">
+              <SelectValue placeholder="Estilo" />
+            </SelectTrigger>
+            <SelectContent className="z-50">
+              {styles.map((style) => (
+                <SelectItem key={style} value={style.toLowerCase().replace(/\s+/g, '-')}>
+                  {style}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select defaultValue="popular" onValueChange={onSortChange}>
             <SelectTrigger className="w-full sm:w-48 bg-gray-50 border-0 rounded-full text-sm">
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
@@ -61,7 +104,7 @@ const FilterBar = () => {
       </div>
 
       <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-        <Button variant="outline" size="sm" className="rounded-full text-sm">
+        <Button variant="outline" size="sm" className="rounded-full text-sm" onClick={onClearFilters}>
           <Filter className="w-4 h-4 mr-1 sm:hidden" />
           Limpar Filtros
         </Button>

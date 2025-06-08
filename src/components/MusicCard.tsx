@@ -32,8 +32,40 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
     });
   };
 
-  // Garantir que a imagem seja válida - verificar se é uma URL válida
-  const validImage = image && image.trim() !== '' && image !== 'null' ? image : '/musical-generic.svg';
+  // Função para formatar preço em reais brasileiros
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  // Verificar se a imagem é válida e do bucket capas
+  const getValidImage = () => {
+    console.log('🖼️ Verificando imagem para o verso:', { id, title, image });
+    
+    if (!image || image.trim() === '' || image === 'null') {
+      console.log('❌ Imagem inválida ou vazia, usando genérica');
+      return '/musical-generic.svg';
+    }
+    
+    // Se a imagem contém o path do bucket capas, usar ela
+    if (image.includes('/capas/') || image.includes('supabase')) {
+      console.log('✅ Imagem válida do Supabase:', image);
+      return image;
+    }
+    
+    // Se for uma URL externa válida, usar ela
+    if (image.startsWith('http')) {
+      console.log('✅ URL externa válida:', image);
+      return image;
+    }
+    
+    console.log('⚠️ Imagem não reconhecida, usando genérica:', image);
+    return '/musical-generic.svg';
+  };
+
+  const validImage = getValidImage();
   
   return (
     <Card className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white">
@@ -47,20 +79,23 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
               alt={title}
               className="w-full h-full object-cover"
               onError={(e) => {
-                // Fallback para imagem genérica em caso de erro
+                console.log('❌ Erro ao carregar imagem, usando fallback');
                 const target = e.target as HTMLImageElement;
                 target.onerror = null;
                 target.src = '/musical-generic.svg';
               }}
+              onLoad={() => {
+                console.log('✅ Imagem carregada com sucesso:', validImage);
+              }}
             />
           </div>
-          {/* Valor abaixo da thumbnail */}
+          {/* Valor formatado em reais brasileiros */}
           {price !== undefined && price > 0 ? (
             <span className="text-sm font-semibold text-gray-900">
-              R$ {price.toFixed(2).replace('.', ',')}
+              {formatPrice(price)}
             </span>
           ) : (
-            <span className="text-sm font-semibold text-gray-900">[valor]</span>
+            <span className="text-sm font-semibold text-gray-600">Gratuito</span>
           )}
         </div>
         
@@ -69,11 +104,11 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
           {/* Título e Musical */}
           <Link to={`/${generateSlug(title || '')}`} className="block">
             <h3 className="font-bold text-gray-900 text-base sm:text-lg hover:text-primary transition-colors mb-1">
-              {title || 'Dados inconsistentes'}
+              {title || 'Título não informado'}
             </h3>
           </Link>
           <p className="text-sm text-gray-600 mb-2 line-clamp-1">
-            {artist || 'Dados inconsistentes'}
+            {artist || 'Artista não informado'}
           </p>
           
           {/* Tags de classificação dinâmicas */}

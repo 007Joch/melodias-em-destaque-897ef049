@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import MusicCard from "./MusicCard";
 import FilterBar from "./FilterBar";
@@ -35,6 +34,20 @@ const getCategoryFromVerse = (verse: Verse): string => {
 // Função auxiliar para obter uma imagem válida
 const getImageFromVerse = (verse: Verse): string => {
   return verse.url_imagem || '/musical-generic.svg';
+};
+
+// Função auxiliar para garantir dados consistentes
+const ensureVerseData = (verse: any) => {
+  return {
+    ...verse,
+    title: verse.titulo_original || verse.titulo_pt_br || 'Título não informado',
+    artist: verse.musical || 'Artista não informado',
+    image: verse.url_imagem && verse.url_imagem !== 'null' ? verse.url_imagem : '/musical-generic.svg',
+    price: verse.valor ? verse.valor / 100 : 0, // Converter de centavos para reais
+    views: verse.visualizacoes || 0,
+    category: getCategoryFromVerse(verse),
+    classificacoes: verse.classificacao_vocal_alt
+  };
 };
 
 const MusicGrid = () => {
@@ -255,19 +268,29 @@ const MusicGrid = () => {
         />
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mt-6">
-          {displayedVerses.map((verse) => (
-            <MusicCard
-              key={verse.id}
-              id={verse.id}
-              title={verse.titulo_original || 'Dados inconsistentes'}
-            artist={verse.musical || 'Dados inconsistentes'}
-              image={getImageFromVerse(verse)}
-              category={getCategoryFromVerse(verse)}
-              views={verse.visualizacoes || 0}
-              price={verse.valor ? verse.valor / 100 : 0} // Converter de centavos para reais
-              classificacoes={verse.classificacao_vocal_alt}
-            />
-          ))}
+          {displayedVerses.map((verse) => {
+            const verseData = ensureVerseData(verse);
+            console.log('🎵 Renderizando verso:', {
+              id: verse.id,
+              title: verseData.title,
+              image: verseData.image,
+              price: verseData.price
+            });
+            
+            return (
+              <MusicCard
+                key={verse.id}
+                id={verse.id}
+                title={verseData.title}
+                artist={verseData.artist}
+                image={verseData.image}
+                category={verseData.category}
+                views={verseData.views}
+                price={verseData.price}
+                classificacoes={verseData.classificacoes}
+              />
+            );
+          })}
         </div>
         
         {hasMoreVerses && (

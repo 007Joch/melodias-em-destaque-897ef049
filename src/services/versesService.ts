@@ -28,6 +28,30 @@ export interface VerseFormData {
   audioOriginal?: string;
 }
 
+// Função para processar e formatar valores monetários
+export const processMonetaryValue = (value: string | number): number => {
+  if (typeof value === 'number') {
+    return value;
+  }
+  
+  if (typeof value === 'string') {
+    // Remove espaços e caracteres não numéricos exceto vírgula e ponto
+    let cleanValue = value.replace(/[^\d,.-]/g, '');
+    
+    // Substitui vírgula por ponto para padronizar
+    cleanValue = cleanValue.replace(',', '.');
+    
+    // Converte para número
+    const numericValue = parseFloat(cleanValue) || 0;
+    
+    console.log('💰 Processando valor monetário:', { original: value, clean: cleanValue, final: numericValue });
+    
+    return numericValue;
+  }
+  
+  return 0;
+};
+
 // Função para redimensionar imagem automaticamente
 const resizeImage = (file: File, maxWidth: number = 400, maxHeight: number = 400, quality: number = 0.8): Promise<File> => {
   return new Promise((resolve) => {
@@ -83,75 +107,54 @@ const resizeImage = (file: File, maxWidth: number = 400, maxHeight: number = 400
 // Função para fazer upload de imagem para o Supabase Storage
 export const uploadImage = async (file: File, fileName: string): Promise<string | null> => {
   try {
-    console.log('Iniciando upload de imagem:', { fileName, fileSize: file.size, fileType: file.type });
+    console.log('🔄 Iniciando upload de imagem:', { fileName, fileSize: file.size, fileType: file.type });
     
     // Verificar se o usuário está autenticado
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      console.error('Usuário não autenticado para upload:', authError);
+      console.error('❌ Usuário não autenticado para upload:', authError);
       return null;
     }
-    console.log('Usuário autenticado:', user.id);
+    console.log('✅ Usuário autenticado:', user.id);
     
     // Redimensionar imagem automaticamente
     const resizedFile = await resizeImage(file);
-    console.log('Imagem redimensionada:', { newSize: resizedFile.size, newType: resizedFile.type });
+    console.log('📏 Imagem redimensionada:', { newSize: resizedFile.size, newType: resizedFile.type });
     
-    const filePath = `capas/${fileName}.jpg`; // Sempre salvar como JPG
-    console.log('Caminho do arquivo:', filePath);
-
-    console.log('Tentando fazer upload para:', filePath);
-    console.log('Tamanho do arquivo redimensionado:', resizedFile.size);
-    console.log('Tipo do arquivo:', resizedFile.type);
+    // Criar nome único para o arquivo
+    const uniqueFileName = `${fileName}_${Date.now()}.jpg`;
+    console.log('📁 Nome único do arquivo:', uniqueFileName);
     
-    // Tentar upload com nome único para evitar conflitos
-    const uniqueFilePath = `${fileName}_${Date.now()}.jpg`;
-    console.log('Caminho único do arquivo:', uniqueFilePath);
-    
+    // Fazer upload para o bucket 'capas'
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('capas')
-      .upload(uniqueFilePath, resizedFile, {
+      .upload(uniqueFileName, resizedFile, {
         cacheControl: '3600',
         upsert: false
       });
-      
-    // Atualizar filePath para o caminho único usado
-    const finalFilePath = uniqueFilePath;
 
     if (uploadError) {
-      console.error('Erro detalhado no upload:', {
-        message: uploadError.message,
-        details: uploadError
-      });
+      console.error('❌ Erro no upload:', uploadError);
       return null;
     }
 
-    console.log('Upload realizado com sucesso:', uploadData);
+    console.log('✅ Upload realizado com sucesso:', uploadData);
     
-    // Verificar se o upload realmente foi bem-sucedido
-    if (!uploadData || !uploadData.path) {
-      console.error('Upload falhou: dados de upload inválidos');
-      return null;
-    }
-
-    // Obter URL pública da imagem usando o path retornado pelo upload
+    // Obter URL pública da imagem
     const { data } = supabase.storage
       .from('capas')
       .getPublicUrl(uploadData.path);
 
-    console.log('URL pública gerada:', data.publicUrl);
-    console.log('Verificando se URL é válida:', data.publicUrl.includes('supabase'));
+    console.log('🔗 URL pública gerada:', data.publicUrl);
     
-    // Verificar se a URL foi gerada corretamente
     if (!data.publicUrl) {
-      console.error('URL pública não foi gerada');
+      console.error('❌ URL pública não foi gerada');
       return null;
     }
     
-    console.log('URL pública válida gerada:', data.publicUrl);
     return data.publicUrl;
   } catch (error) {
-    console.error('Erro geral no upload da imagem:', error);
+    console.error('❌ Erro geral no upload da imagem:', error);
     return null;
   }
 };
@@ -169,40 +172,34 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
   isCreatingVerse = true;
   
   try {
-    console.log('Iniciando criação de verso:', { titulo_pt_br: formData.titulo_pt_br, hasImageFile: !!formData.imageFile, hasImageUrl: !!formData.imageUrl });
+    console.log('🆕 Iniciando criação de verso:', { titulo_pt_br: formData.titulo_pt_br, hasImageFile: !!formData.imageFile, hasImageUrl: !!formData.imageUrl });
     
     // Obter o usuário autenticado
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
-      console.error('Usuário não autenticado:', authError);
+      console.error('❌ Usuário não autenticado:', authError);
       throw new Error('Usuário deve estar autenticado para criar um verso');
     }
 
-    console.log('Usuário autenticado:', user.id);
+    console.log('✅ Usuário autenticado:', user.id);
     let imageUrl: string | null = null;
 
     // Se há um arquivo de imagem, fazer upload
     if (formData.imageFile) {
-      console.log('Processando upload de arquivo de imagem...', {
-        fileName: formData.imageFile.name,
-        fileSize: formData.imageFile.size,
-        fileType: formData.imageFile.type
-      });
+      console.log('📤 Processando upload de arquivo de imagem...');
       const fileName = `verse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log('Nome do arquivo gerado:', fileName);
       const uploadedUrl = await uploadImage(formData.imageFile, fileName);
-      console.log('Resultado do upload:', uploadedUrl);
       if (uploadedUrl) {
         imageUrl = uploadedUrl;
-        console.log('Upload de arquivo concluído com sucesso:', imageUrl);
+        console.log('✅ Upload de arquivo concluído:', imageUrl);
       } else {
-        console.error('Falha no upload do arquivo de imagem - uploadedUrl é null');
+        console.error('❌ Falha no upload do arquivo de imagem');
       }
     }
     // Se há uma URL de imagem, processar e fazer upload
     else if (formData.imageUrl) {
-      console.log('Processando upload de imagem via URL:', formData.imageUrl);
+      console.log('🔗 Processando upload de imagem via URL:', formData.imageUrl);
       try {
         // Baixar a imagem da URL
         const response = await fetch(formData.imageUrl);
@@ -214,19 +211,25 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
           const uploadedUrl = await uploadImage(file, fileName);
           if (uploadedUrl) {
             imageUrl = uploadedUrl;
-            console.log('Upload de URL concluído com sucesso:', imageUrl);
+            console.log('✅ Upload de URL concluído:', imageUrl);
           } else {
-            console.error('Falha no upload da imagem via URL');
+            console.error('❌ Falha no upload da imagem via URL');
           }
         } else {
-          console.warn('Não foi possível baixar a imagem da URL fornecida');
+          console.warn('⚠️ Não foi possível baixar a imagem da URL fornecida');
           imageUrl = formData.imageUrl; // Fallback para URL original
         }
       } catch (error) {
-        console.warn('Erro ao processar imagem da URL:', error);
+        console.warn('⚠️ Erro ao processar imagem da URL:', error);
         imageUrl = formData.imageUrl; // Fallback para URL original
       }
     }
+
+    // Processar valor monetário corretamente
+    const processedValue = processMonetaryValue(formData.valor);
+    const valueInCents = Math.round(processedValue * 100); // Converter para centavos
+    
+    console.log('💰 Valor processado:', { original: formData.valor, processed: processedValue, inCents: valueInCents });
 
     // Usar o titulo_original fornecido ou o titulo_pt_br como fallback
     const tituloOriginal = formData.titulo_original || formData.titulo_pt_br;
@@ -247,7 +250,7 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
       
       // Informações do produto
       estilo: formData.estilo ? [formData.estilo] : null,
-      valor: Math.round((typeof formData.valor === 'string' ? parseFloat(formData.valor) || 0 : formData.valor || 0) * 100), // Converter para centavos (inteiro)
+      valor: valueInCents, // Valor em centavos
       
       // Conteúdo e mídia
       conteudo: formData.conteudo,
@@ -260,62 +263,36 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
       criada_por: user.id
     };
 
-    console.log('=== DADOS FINAIS ANTES DA INSERÇÃO ===');
-    console.log('Valor da imageUrl antes de inserir:', imageUrl);
-    console.log('formData.imageFile existe?', !!formData.imageFile);
-    console.log('formData.imageUrl:', formData.imageUrl);
-    console.log('Tipo de imageUrl:', typeof imageUrl);
-    console.log('imageUrl é null?', imageUrl === null);
-    console.log('imageUrl é undefined?', imageUrl === undefined);
-    console.log('imageUrl é string vazia?', imageUrl === '');
-    console.log('Dados do verso a serem inseridos:', {
+    console.log('📝 Dados finais para inserção:', {
       ...verseData,
+      valor: `${processedValue} reais (${valueInCents} centavos)`,
       url_imagem: imageUrl
     });
-    console.log('========================================');
     
-    // Adicionar timeout mais agressivo para evitar loops infinitos
-    const insertPromise = supabase
+    const { data, error } = await supabase
       .from('versoes')
       .insert(verseData)
       .select()
       .single();
-      
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout: Operação demorou mais que 15 segundos')), 15000);
-    });
-    
-    const { data, error } = await Promise.race([insertPromise, timeoutPromise]) as any;
 
     if (error) {
-      console.error('Erro ao criar verso no Supabase:', error);
-      console.error('Detalhes do erro:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
+      console.error('❌ Erro ao criar verso no Supabase:', error);
       
-      // Tratamento específico para diferentes tipos de erro
       if (error.code === '23505') {
         throw new Error('Erro: Já existe um verso com este título. Tente um título diferente.');
       } else if (error.code === '42501' || error.message?.includes('RLS') || error.message?.includes('policy')) {
         throw new Error('Erro de permissão: Você precisa ter um perfil de administrador para criar versos. Faça logout e login novamente.');
-      } else if (error.code === 'PGRST301') {
-        throw new Error('Erro de permissão: Políticas de segurança impedem a criação do verso. Verifique suas permissões.');
       } else {
         throw new Error(`Erro ao salvar verso: ${error.message}`);
       }
     }
 
-    console.log('Verso criado com sucesso:', data);
+    console.log('✅ Verso criado com sucesso:', data);
     return data;
   } catch (error) {
-    console.error('Erro geral ao criar verso:', error);
-    // Re-lançar o erro para que seja tratado no componente
+    console.error('❌ Erro geral ao criar verso:', error);
     throw error;
   } finally {
-    // Sempre liberar o lock, mesmo em caso de erro
     isCreatingVerse = false;
   }
 };
@@ -323,7 +300,7 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 // Função para buscar versos com paginação
 export const getVersesPaginated = async (page: number = 1, limit: number = 50): Promise<{ data: any[], total: number, hasMore: boolean }> => {
   try {
-    console.log(`Buscando versos - Página: ${page}, Limite: ${limit}`);
+    console.log(`📄 Buscando versos - Página: ${page}, Limite: ${limit}`);
     
     const offset = (page - 1) * limit;
     
@@ -333,12 +310,12 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
       .select('*', { count: 'exact', head: true });
     
     if (countError) {
-      console.error('Erro ao contar registros:', countError);
+      console.error('❌ Erro ao contar registros:', countError);
       throw countError;
     }
     
     const totalRecords = count || 0;
-    console.log(`Total de registros na base: ${totalRecords}`);
+    console.log(`📊 Total de registros na base: ${totalRecords}`);
     
     // Buscar os dados paginados
     const { data, error } = await supabase
@@ -348,15 +325,14 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
       .range(offset, offset + limit - 1);
     
     if (error) {
-      console.error('Erro ao buscar versos paginados:', error);
+      console.error('❌ Erro ao buscar versos paginados:', error);
       throw error;
     }
     
     const processedData = data ? processVerseData(data) : [];
     const hasMore = offset + limit < totalRecords;
     
-    console.log(`Retornando ${processedData.length} versos de ${totalRecords} total. Tem mais: ${hasMore}`);
-    console.log(`📊 Cálculo hasMore: offset(${offset}) + limit(${limit}) = ${offset + limit} < totalRecords(${totalRecords}) = ${hasMore}`);
+    console.log(`📋 Retornando ${processedData.length} versos de ${totalRecords} total. Tem mais: ${hasMore}`);
     
     return {
       data: processedData,
@@ -364,7 +340,7 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
       hasMore
     };
   } catch (error) {
-    console.error('Erro ao buscar versos paginados:', error);
+    console.error('❌ Erro ao buscar versos paginados:', error);
     return { data: [], total: 0, hasMore: false };
   }
 };
@@ -461,57 +437,57 @@ export const getAllVerses = async (): Promise<any[]> => {
 
 // Função auxiliar para processar os dados dos versos
 const processVerseData = (data: any[]) => {
-  console.log('Processando dados dos versos:', data.length);
-  console.log('Dados brutos completos:', JSON.stringify(data));
+  console.log('🔄 Processando dados dos versos:', data.length);
+  
   if (data.length > 0) {
-    console.log('Primeiro verso da tabela versoes (dados brutos):', {
+    console.log('📋 Primeiro verso da tabela versoes (dados brutos):', {
       id: data[0].id,
+      titulo_original: data[0].titulo_original,
       titulo_pt_br: data[0].titulo_pt_br,
       musical: data[0].musical,
       estilo: data[0].estilo,
       url_imagem: data[0].url_imagem,
       visualizacoes: data[0].visualizacoes,
-      valor: data[0].valor ? data[0].valor / 100 : 0 // Converter de centavos para reais
+      valor: data[0].valor
     });
   }
   
-  // Mapear os dados da tabela versoes para o formato esperado pelo componente HomePage
+  // Mapear os dados da tabela versoes para o formato esperado
   const mappedData = data.map(verso => {
-    // Determinar a categoria com base no estilo ou origem
+    // Determinar a categoria com base no estilo
     let category = 'Teatro Musical';
     if (Array.isArray(verso.estilo) && verso.estilo.length > 0) {
       category = verso.estilo[0];
-    } else if (verso.origem) {
-      const origem = verso.origem.toLowerCase();
-      if (origem.includes('hamilton')) {
-        category = 'Hip Hop';
-      } else if (origem.includes('miseráveis') || origem.includes('miserables')) {
-        category = 'Drama Musical';
-      } else if (origem.includes('rei leão') || origem.includes('lion king')) {
-        category = 'Animação';
-      }
     }
     
-    // Mapear campos para o formato esperado pelo MusicCard
+    // Converter valor de centavos para reais
+    const priceInReais = verso.valor ? verso.valor / 100 : 0;
+    
+    // Garantir que a URL da imagem seja válida
+    let imageUrl = '/musical-generic.svg';
+    if (verso.url_imagem && verso.url_imagem.trim() !== '' && verso.url_imagem !== 'null') {
+      imageUrl = verso.url_imagem;
+    }
+    
     const mapped = {
       id: verso.id,
       // Campos para compatibilidade com o componente MusicCard
-      title: verso.titulo_original,
+      title: verso.titulo_original || verso.titulo_pt_br,
       artist: verso.musical,
       category: category,
-      image: verso.url_imagem || '/musical-generic.svg',
+      image: imageUrl,
       views: verso.visualizacoes || 0,
-      price: verso.valor ? verso.valor / 100 : 0, // Converter de centavos para reais
+      price: priceInReais,
       classificacoes: verso.classificacao_vocal_alt,
       
       // Campos originais da tabela versoes
       titulo_pt_br: verso.titulo_pt_br,
       titulo_original: verso.titulo_original,
       musical: verso.musical,
-      estilo: verso.estilo || [], // Garantir que seja sempre um array
-      url_imagem: verso.url_imagem || '/musical-generic.svg',
+      estilo: verso.estilo || [],
+      url_imagem: imageUrl,
       visualizacoes: verso.visualizacoes || 0,
-      valor: verso.valor ? verso.valor / 100 : 0, // Converter de centavos para reais
+      valor: priceInReais,
       status: verso.status || 'active',
       criada_em: verso.criada_em || new Date().toISOString(),
       letra_original: verso.letra_original,
@@ -522,20 +498,20 @@ const processVerseData = (data: any[]) => {
       classificacao_vocal_alt: verso.classificacao_vocal_alt
     };
     
-    console.log(`Verso mapeado ${verso.id}:`, {
+    console.log(`📋 Verso mapeado ${verso.id}:`, {
       id: mapped.id,
       title: mapped.title,
       artist: mapped.artist,
       category: mapped.category,
       image: mapped.image,
-      views: mapped.views,
-      price: mapped.price ? mapped.price / 100 : 0 // Converter de centavos para reais
+      price: `R$ ${priceInReais.toFixed(2).replace('.', ',')}`,
+      originalValue: verso.valor
     });
     
     return mapped;
   });
   
-  console.log(`Versos mapeados: ${mappedData.length}`);
+  console.log(`✅ Versos mapeados: ${mappedData.length}`);
   return mappedData;
 };
 
@@ -686,14 +662,14 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
       const uploadedUrl = await uploadImage(formData.imageFile, fileName);
       if (uploadedUrl) {
         imageUrl = uploadedUrl;
-        console.log('Upload de arquivo concluído com sucesso:', imageUrl);
+        console.log('✅ Upload de arquivo concluído:', imageUrl);
       } else {
-        console.error('Falha no upload do arquivo de imagem');
+        console.error('❌ Falha no upload do arquivo de imagem');
       }
     }
     // Se há uma URL de imagem e não é do bucket 'capas', processar e fazer upload
     else if (formData.imageUrl && !formData.imageUrl.includes('/capas/')) {
-      console.log('Processando upload de imagem via URL:', formData.imageUrl);
+      console.log('🔗 Processando upload de imagem via URL:', formData.imageUrl);
       try {
         // Baixar a imagem da URL
         const response = await fetch(formData.imageUrl);
@@ -705,16 +681,16 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
           const uploadedUrl = await uploadImage(file, fileName);
           if (uploadedUrl) {
             imageUrl = uploadedUrl;
-            console.log('Upload de URL concluído com sucesso:', imageUrl);
+            console.log('✅ Upload de URL concluído:', imageUrl);
           } else {
-            console.error('Falha no upload da imagem via URL');
+            console.error('❌ Falha no upload da imagem via URL');
           }
         } else {
-          console.warn('Não foi possível baixar a imagem da URL fornecida');
+          console.warn('⚠️ Não foi possível baixar a imagem da URL fornecida');
           imageUrl = formData.imageUrl; // Fallback para URL original
         }
       } catch (error) {
-        console.warn('Erro ao processar imagem da URL:', error);
+        console.warn('⚠️ Erro ao processar imagem da URL:', error);
         imageUrl = formData.imageUrl; // Fallback para URL original
       }
     }
@@ -777,7 +753,7 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
       .select();
 
     if (error) {
-      console.error('Erro do Supabase ao atualizar verso:', error);
+      console.error('❌ Erro do Supabase ao atualizar verso:', error);
       throw error;
     }
 
@@ -789,7 +765,7 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
     console.log('Verso atualizado com sucesso:', data[0]);
     return data[0];
   } catch (error) {
-    console.error('Erro ao atualizar verso:', error);
+    console.error('❌ Erro ao atualizar verso:', error);
     throw error;
   }
 };
@@ -803,13 +779,13 @@ export const deleteVerse = async (id: number): Promise<boolean> => {
       .eq('id', id);
 
     if (error) {
-      console.error('Erro ao deletar verso:', error);
+      console.error('❌ Erro ao deletar verso:', error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Erro ao deletar verso:', error);
+    console.error('❌ Erro ao deletar verso:', error);
     return false;
   }
 };
@@ -830,7 +806,7 @@ export const incrementViews = async (id: number): Promise<void> => {
       }
     }
   } catch (error) {
-    console.error('Erro ao incrementar visualizações:', error);
+    console.error('❌ Erro ao incrementar visualizações:', error);
   }
 };
 

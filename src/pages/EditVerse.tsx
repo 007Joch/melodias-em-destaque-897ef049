@@ -14,6 +14,7 @@ import 'react-quill/dist/quill.snow.css';
 import { updateVerse, getVerseById, VerseFormData } from '../services/versesService';
 import { toast } from '@/components/ui/sonner';
 import { Database } from '../integrations/supabase/types';
+import PriceInput from '@/components/PriceInput';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
 
@@ -121,28 +122,10 @@ const EditVerse = () => {
   }, [id, navigate]);
 
   const handleInputChange = (field: keyof VerseFormData, value: any) => {
-    // Tratamento especial para o campo valor (aceitar vírgula e ponto)
-    if (field === 'valor') {
-      // Se for string, substituir vírgula por ponto e converter para número
-      if (typeof value === 'string') {
-        const normalizedValue = value.replace(',', '.');
-        const numericValue = parseFloat(normalizedValue) || 0;
-        setFormData(prev => ({
-          ...prev,
-          [field]: numericValue
-        }));
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          [field]: value
-        }));
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,14 +310,10 @@ const EditVerse = () => {
                       <Label htmlFor="valor" className="text-sm font-medium text-gray-700">
                         Valor (R$)
                       </Label>
-                      <Input
-                        id="valor"
-                        type="number"
-                        min="0"
-                        step="0.01"
+                      <PriceInput
                         value={formData.valor}
-                        onChange={(e) => handleInputChange('valor', e.target.value)}
-                        placeholder="0.00"
+                        onChange={(value) => handleInputChange('valor', value)}
+                        placeholder="0,00"
                         className="rounded-lg border-gray-300 focus:border-primary"
                       />
                     </div>

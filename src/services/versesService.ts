@@ -104,7 +104,7 @@ const resizeImage = (file: File, maxWidth: number = 400, maxHeight: number = 400
   });
 };
 
-// Função para fazer upload de imagem para o Supabase Storage
+// Função melhorada para fazer upload de imagem para o Supabase Storage
 export const uploadImage = async (file: File, fileName: string): Promise<string | null> => {
   try {
     console.log('🔄 Iniciando upload de imagem:', { fileName, fileSize: file.size, fileType: file.type });
@@ -113,7 +113,7 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       console.error('❌ Usuário não autenticado para upload:', authError);
-      return null;
+      throw new Error('Usuário deve estar autenticado para fazer upload');
     }
     console.log('✅ Usuário autenticado:', user.id);
     
@@ -122,40 +122,60 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     console.log('📏 Imagem redimensionada:', { newSize: resizedFile.size, newType: resizedFile.type });
     
     // Criar nome único para o arquivo
-    const uniqueFileName = `${fileName}_${Date.now()}.jpg`;
+    const fileExtension = 'jpg';
+    const uniqueFileName = `${fileName}_${Date.now()}.${fileExtension}`;
     console.log('📁 Nome único do arquivo:', uniqueFileName);
     
-    // Fazer upload para o bucket 'capas'
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    // Tentar fazer upload com diferentes estratégias
+    console.log('📤 Tentando upload no bucket capas...');
+    
+    // Primeira tentativa: upload normal
+    let uploadResult = await supabase.storage
       .from('capas')
       .upload(uniqueFileName, resizedFile, {
         cacheControl: '3600',
-        upsert: false
+        upsert: true, // Permite sobrescrever se já existir
+        contentType: 'image/jpeg'
       });
 
-    if (uploadError) {
-      console.error('❌ Erro no upload:', uploadError);
-      return null;
+    if (uploadResult.error) {
+      console.warn('⚠️ Primeira tentativa falhou:', uploadResult.error);
+      
+      // Segunda tentativa: com upsert false
+      uploadResult = await supabase.storage
+        .from('capas')
+        .upload(`alt_${uniqueFileName}`, resizedFile, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: 'image/jpeg'
+        });
+        
+      if (uploadResult.error) {
+        console.error('❌ Segunda tentativa também falhou:', uploadResult.error);
+        throw new Error(`Erro no upload: ${uploadResult.error.message}`);
+      } else {
+        uniqueFileName = `alt_${uniqueFileName}`;
+      }
     }
 
-    console.log('✅ Upload realizado com sucesso:', uploadData);
+    console.log('✅ Upload realizado com sucesso:', uploadResult.data);
     
     // Obter URL pública da imagem
     const { data } = supabase.storage
       .from('capas')
-      .getPublicUrl(uploadData.path);
+      .getPublicUrl(uploadResult.data.path);
 
     console.log('🔗 URL pública gerada:', data.publicUrl);
     
     if (!data.publicUrl) {
       console.error('❌ URL pública não foi gerada');
-      return null;
+      throw new Error('Não foi possível gerar URL pública');
     }
     
     return data.publicUrl;
   } catch (error) {
     console.error('❌ Erro geral no upload da imagem:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -189,12 +209,15 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
     if (formData.imageFile) {
       console.log('📤 Processando upload de arquivo de imagem...');
       const fileName = `verse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const uploadedUrl = await uploadImage(formData.imageFile, fileName);
-      if (uploadedUrl) {
-        imageUrl = uploadedUrl;
-        console.log('✅ Upload de arquivo concluído:', imageUrl);
-      } else {
-        console.error('❌ Falha no upload do arquivo de imagem');
+      try {
+        const uploadedUrl = await uploadImage(formData.imageFile, fileName);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+          console.log('✅ Upload de arquivo concluído:', imageUrl);
+        }
+      } catch (error) {
+        console.error('❌ Falha no upload do arquivo de imagem:', error);
+        throw new Error(`Erro no upload da imagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       }
     }
     // Se há uma URL de imagem, processar e fazer upload
@@ -212,8 +235,6 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
           if (uploadedUrl) {
             imageUrl = uploadedUrl;
             console.log('✅ Upload de URL concluído:', imageUrl);
-          } else {
-            console.error('❌ Falha no upload da imagem via URL');
           }
         } else {
           console.warn('⚠️ Não foi possível baixar a imagem da URL fornecida');
@@ -349,69 +370,8 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
 export const getAllVerses = async (): Promise<any[]> => {
   try {
     console.log('Buscando todos os versos ativos da tabela versoes...');
-    console.log('Cliente Supabase configurado:', !!supabase);
-    console.log('Sessão atual:', await supabase.auth.getSession());
     
-    // Verificar se o usuário está autenticado
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('Usuário autenticado:', !!session);
-    if (session) {
-      console.log('ID do usuário:', session.user.id);
-      console.log('Email do usuário:', session.user.email);
-    }
-    
-    // Usar o nome correto da tabela: 'versoes' (com acento)
-    // Primeiro, vamos tentar buscar todos os registros sem filtro para debug
-    console.log('Tentativa 0: Busca sem filtros');
-    const { data: allData, error: allError } = await supabase
-      .from('versoes')
-      .select('*');
-    
-    console.log('Todos os registros da tabela versoes:', allData?.length || 0);
-    if (allData && allData.length > 0) {
-      console.log('Primeiro registro:', allData[0]);
-    }
-    if (allError) {
-      console.error('Erro ao buscar todos os registros:', allError);
-    }
-    
-    // Tentar diferentes abordagens para buscar os dados
-    console.log('Tentativa 1: Busca com filtro status = active');
-    const { data: activeData, error: activeError } = await supabase
-      .from('versoes')
-      .select('*')
-      .eq('status', 'active')
-      .order('id', { ascending: false })
-      .limit(50);
-
-    if (activeError) {
-      console.error('Erro ao buscar versos ativos:', activeError);
-    } else {
-      console.log(`Versos encontrados: ${activeData?.length || 0}`);
-      if (activeData && activeData.length > 0) {
-        return processVerseData(activeData);
-      }
-    }
-    
-    // Tentativa 2: Buscar sem filtro de status (com limite)
-    console.log('Tentativa 2: Busca sem filtro de status');
-    const { data: allActiveData, error: allActiveError } = await supabase
-      .from('versoes')
-      .select('*')
-      .order('id', { ascending: false })
-      .limit(100);
-      
-    if (allActiveError) {
-      console.error('Erro ao buscar todos os versos:', allActiveError);
-    } else {
-      console.log(`Todos os versos encontrados: ${allActiveData?.length || 0}`);
-      if (allActiveData && allActiveData.length > 0) {
-        return processVerseData(allActiveData);
-      }
-    }
-    
-    // Tentativa 3: Buscar apenas os primeiros registros para garantir que algo seja retornado
-    console.log('Tentativa 3: Busca simples dos primeiros registros');
+    // Buscar apenas os primeiros registros para garantir que algo seja retornado
     const { data: simpleData, error: simpleError } = await supabase
       .from('versoes')
       .select('*')
@@ -419,6 +379,7 @@ export const getAllVerses = async (): Promise<any[]> => {
       
     if (simpleError) {
       console.error('Erro na busca simples:', simpleError);
+      return [];
     } else {
       console.log(`Registros encontrados na busca simples: ${simpleData?.length || 0}`);
       if (simpleData && simpleData.length > 0) {
@@ -426,8 +387,6 @@ export const getAllVerses = async (): Promise<any[]> => {
       }
     }
     
-    // Se chegou aqui, não conseguiu dados de nenhuma forma
-    console.log('Não foi possível obter dados de nenhuma forma. Retornando array vazio.');
     return [];
   } catch (error) {
     console.error('Erro ao buscar versos:', error);
@@ -438,19 +397,6 @@ export const getAllVerses = async (): Promise<any[]> => {
 // Função auxiliar para processar os dados dos versos
 const processVerseData = (data: any[]) => {
   console.log('🔄 Processando dados dos versos:', data.length);
-  
-  if (data.length > 0) {
-    console.log('📋 Primeiro verso da tabela versoes (dados brutos):', {
-      id: data[0].id,
-      titulo_original: data[0].titulo_original,
-      titulo_pt_br: data[0].titulo_pt_br,
-      musical: data[0].musical,
-      estilo: data[0].estilo,
-      url_imagem: data[0].url_imagem,
-      visualizacoes: data[0].visualizacoes,
-      valor: data[0].valor
-    });
-  }
   
   // Mapear os dados da tabela versoes para o formato esperado
   const mappedData = data.map(verso => {
@@ -498,16 +444,6 @@ const processVerseData = (data: any[]) => {
       classificacao_vocal_alt: verso.classificacao_vocal_alt
     };
     
-    console.log(`📋 Verso mapeado ${verso.id}:`, {
-      id: mapped.id,
-      title: mapped.title,
-      artist: mapped.artist,
-      category: mapped.category,
-      image: mapped.image,
-      price: `R$ ${priceInReais.toFixed(2).replace('.', ',')}`,
-      originalValue: verso.valor
-    });
-    
     return mapped;
   });
   
@@ -536,8 +472,7 @@ export const getVerseById = async (id: number): Promise<Verse | null> => {
     const { data, error } = await supabase
       .from('versoes')
       .select('*')
-      .eq('id', id)
-      .eq('status', 'active');
+      .eq('id', id);
 
     if (error) {
       console.error('Erro ao buscar verso:', error);
@@ -561,8 +496,7 @@ export const getVerseBySlug = async (slug: string): Promise<Verse | null> => {
   try {
     const { data, error } = await supabase
       .from('versoes')
-      .select('*')
-      .eq('status', 'active');
+      .select('*');
 
     if (error) {
       console.error('Erro ao buscar versos:', error);
@@ -609,7 +543,6 @@ export const searchVerses = async (searchTerm: string, limit: number = 10): Prom
       .from('versoes')
       .select('*')
       .or(`titulo_original.ilike."${searchTermLower}",titulo_pt_br.ilike."${searchTermLower}"`)
-      .eq('status', 'active')
       .limit(1)
       .single();
 
@@ -622,7 +555,6 @@ export const searchVerses = async (searchTerm: string, limit: number = 10): Prom
       .from('versoes')
       .select('*')
       .or(`titulo_original.ilike."%${searchTermLower}%",titulo_pt_br.ilike."%${searchTermLower}%",musical.ilike."%${searchTermLower}%",compositor.ilike."%${searchTermLower}%",conteudo.ilike."%${searchTermLower}%"`)
-      .eq('status', 'active')
       .limit(limit)
       .order('visualizacoes', { ascending: false });
 
@@ -657,14 +589,17 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
 
     // Se há um arquivo de imagem, fazer upload
     if (formData.imageFile) {
-      console.log('Processando upload de arquivo de imagem...');
+      console.log('📤 Processando upload de arquivo de imagem...');
       const fileName = `verse_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const uploadedUrl = await uploadImage(formData.imageFile, fileName);
-      if (uploadedUrl) {
-        imageUrl = uploadedUrl;
-        console.log('✅ Upload de arquivo concluído:', imageUrl);
-      } else {
-        console.error('❌ Falha no upload do arquivo de imagem');
+      try {
+        const uploadedUrl = await uploadImage(formData.imageFile, fileName);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+          console.log('✅ Upload de arquivo concluído:', imageUrl);
+        }
+      } catch (error) {
+        console.error('❌ Falha no upload do arquivo de imagem:', error);
+        throw new Error(`Erro no upload da imagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       }
     }
     // Se há uma URL de imagem e não é do bucket 'capas', processar e fazer upload
@@ -682,8 +617,6 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
           if (uploadedUrl) {
             imageUrl = uploadedUrl;
             console.log('✅ Upload de URL concluído:', imageUrl);
-          } else {
-            console.error('❌ Falha no upload da imagem via URL');
           }
         } else {
           console.warn('⚠️ Não foi possível baixar a imagem da URL fornecida');
@@ -698,7 +631,6 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
     const updateData: VerseUpdate = {};
     
     // Mapear campos do formulário para campos do banco
-    // Campo origem removido - não existe na tabela versoes
     if (formData.compositor !== undefined) {
       updateData.compositor = formData.compositor ? [formData.compositor] : null;
     }
@@ -718,12 +650,12 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
       updateData.versionado_em = formData.versionadoEm || null;
     }
     if (formData.titulo_pt_br !== undefined) {
-    updateData.titulo_pt_br = formData.titulo_pt_br || 'Título não informado';
-  }
-  
-  if (formData.titulo_original !== undefined) {
-    updateData.titulo_original = formData.titulo_original || updateData.titulo_original;
-  }
+      updateData.titulo_pt_br = formData.titulo_pt_br || 'Título não informado';
+    }
+    
+    if (formData.titulo_original !== undefined) {
+      updateData.titulo_original = formData.titulo_original || updateData.titulo_original;
+    }
     if (formData.musical !== undefined) {
       updateData.musical = formData.musical || 'Musical não informado';
     }
@@ -859,8 +791,7 @@ export const getCategories = async (): Promise<string[]> => {
   try {
     const { data, error } = await supabase
       .from('versoes')
-      .select('estilo')
-      .eq('status', 'active');
+      .select('estilo');
 
     if (error) {
       console.error('Erro ao buscar categorias:', error);

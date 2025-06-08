@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
@@ -29,14 +30,14 @@ import PriceInput from "@/components/PriceInput";
 
 const formSchema = z.object({
   // Informações do Musical
-  compositor: z.string().optional(),
+  compositor: z.string(),
   letraOriginal: z.string().min(1, {
     message: "Por favor, insira a letra original.",
   }),
-  letrista: z.string().optional(),
-  versionista: z.string().optional(),
-  revisao: z.string().optional(),
-  versionadoEm: z.string().optional(),
+  letrista: z.string(),
+  versionista: z.string(),
+  revisao: z.string(),
+  versionadoEm: z.string(),
   
   // Informações do Produto
   titulo_pt_br: z.string().min(1, {
@@ -95,8 +96,21 @@ const CreateVerse = () => {
       
       // Criar um objeto VerseFormData com os valores do formulário
       const verseData: VerseFormData = {
-        ...values,
-        valor: valorNumerico || 0, // Usar 0 como fallback se o valor for nulo ou inválido
+        compositor: values.compositor || "",
+        letraOriginal: values.letraOriginal,
+        letrista: values.letrista || "",
+        versionista: values.versionista || "",
+        revisao: values.revisao || "",
+        versionadoEm: values.versionadoEm || "",
+        titulo_pt_br: values.titulo_pt_br,
+        titulo_original: values.titulo_original,
+        musical: values.musical,
+        estilo: values.estilo,
+        valor: valorNumerico || 0,
+        conteudo: values.conteudo,
+        imageFile: values.imageFile,
+        imageUrl: values.imageUrl,
+        audioOriginal: values.audioOriginal,
       };
       
       // Chamar a função createVerse para criar o verso
@@ -346,19 +360,9 @@ const CreateVerse = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <FormLabel>Imagem</FormLabel>
-                      <FormField
-                        control={form.control}
-                        name="isImageUploadActive"
-                        render={() => (
-                          <FormItem className="space-y-0">
-                            <FormControl>
-                              <Switch
-                                checked={isImageUploadActive}
-                                onCheckedChange={setIsImageUploadActive}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
+                      <Switch
+                        checked={isImageUploadActive}
+                        onCheckedChange={setIsImageUploadActive}
                       />
                     </div>
                     <FormDescription>

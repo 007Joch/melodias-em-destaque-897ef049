@@ -123,46 +123,31 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     
     // Criar nome único para o arquivo
     const fileExtension = 'jpg';
-    let uniqueFileName = `${fileName}_${Date.now()}.${fileExtension}`;
+    const uniqueFileName = `${fileName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExtension}`;
     console.log('📁 Nome único do arquivo:', uniqueFileName);
     
-    // Tentar fazer upload com diferentes estratégias
-    console.log('📤 Tentando upload no bucket capas...');
+    // Fazer upload para o bucket capas
+    console.log('📤 Fazendo upload no bucket capas...');
     
-    // Primeira tentativa: upload normal
-    let uploadResult = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('capas')
       .upload(uniqueFileName, resizedFile, {
         cacheControl: '3600',
-        upsert: true, // Permite sobrescrever se já existir
+        upsert: true,
         contentType: 'image/jpeg'
       });
 
-    if (uploadResult.error) {
-      console.warn('⚠️ Primeira tentativa falhou:', uploadResult.error);
-      
-      // Segunda tentativa: com upsert false e novo nome
-      uniqueFileName = `alt_${uniqueFileName}`;
-      uploadResult = await supabase.storage
-        .from('capas')
-        .upload(uniqueFileName, resizedFile, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: 'image/jpeg'
-        });
-        
-      if (uploadResult.error) {
-        console.error('❌ Segunda tentativa também falhou:', uploadResult.error);
-        throw new Error(`Erro no upload: ${uploadResult.error.message}`);
-      }
+    if (uploadError) {
+      console.error('❌ Erro no upload:', uploadError);
+      throw new Error(`Erro no upload: ${uploadError.message}`);
     }
 
-    console.log('✅ Upload realizado com sucesso:', uploadResult.data);
+    console.log('✅ Upload realizado com sucesso:', uploadData);
     
     // Obter URL pública da imagem
     const { data } = supabase.storage
       .from('capas')
-      .getPublicUrl(uploadResult.data.path);
+      .getPublicUrl(uploadData.path);
 
     console.log('🔗 URL pública gerada:', data.publicUrl);
     

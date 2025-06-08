@@ -40,7 +40,7 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
     }).format(value);
   };
 
-  // Verificar se a imagem é válida e do bucket capas
+  // Verificar se a imagem é válida
   const getValidImage = () => {
     console.log('🖼️ Verificando imagem para o verso:', { id, title, image });
     
@@ -49,8 +49,8 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
       return '/musical-generic.svg';
     }
     
-    // Se a imagem contém o path do bucket capas, usar ela
-    if (image.includes('/capas/') || image.includes('supabase')) {
+    // Se a imagem contém o path do bucket capas ou é do Supabase, usar ela
+    if (image.includes('/capas/') || image.includes('supabase.co') || image.includes('hlrcvvaneofcpncbqjyg')) {
       console.log('✅ Imagem válida do Supabase:', image);
       return image;
     }

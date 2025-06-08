@@ -450,40 +450,46 @@ export const generateSlug = (title: string): string => {
     .replace(/-+/g, '-'); // Remove hífens duplicados
 };
 
-// Função para buscar um verso por ID
+// Função para buscar um verso por ID - CORRIGIDA
 export const getVerseById = async (id: number): Promise<Verse | null> => {
   try {
+    console.log('🔍 Buscando verso por ID:', id);
+    
     const { data, error } = await supabase
       .from('versoes')
       .select('*')
-      .eq('id', id);
+      .eq('id', id)
+      .single();
 
     if (error) {
-      console.error('Erro ao buscar verso:', error);
+      console.error('❌ Erro ao buscar verso por ID:', error);
       return null;
     }
 
-    if (!data || data.length === 0) {
-      console.error('Verso não encontrado com ID:', id);
+    if (!data) {
+      console.error('❌ Verso não encontrado com ID:', id);
       return null;
     }
 
-    return data[0];
+    console.log('✅ Verso encontrado por ID:', data);
+    return data;
   } catch (error) {
-    console.error('Erro ao buscar verso:', error);
+    console.error('❌ Erro geral ao buscar verso por ID:', error);
     return null;
   }
 };
 
-// Função para buscar um verso por slug (título)
+// Função para buscar um verso por slug (título) - CORRIGIDA
 export const getVerseBySlug = async (slug: string): Promise<Verse | null> => {
   try {
+    console.log('🔍 Buscando verso por slug:', slug);
+    
     const { data, error } = await supabase
       .from('versoes')
       .select('*');
 
     if (error) {
-      console.error('Erro ao buscar versos:', error);
+      console.error('❌ Erro ao buscar versos para slug:', error);
       return null;
     }
 
@@ -491,22 +497,35 @@ export const getVerseBySlug = async (slug: string): Promise<Verse | null> => {
     // Usar titulo_pt_br se disponível, senão usar titulo_original
     const verse = data?.find(v => {
       const title = v.titulo_pt_br && v.titulo_pt_br.trim() !== '' ? v.titulo_pt_br : v.titulo_original;
-      return generateSlug(title || '') === slug;
+      const generatedSlug = generateSlug(title || '');
+      console.log('🔍 Comparando slugs:', { slug, generatedSlug, title });
+      return generatedSlug === slug;
     });
+    
+    if (verse) {
+      console.log('✅ Verso encontrado por slug:', verse);
+    } else {
+      console.log('❌ Verso não encontrado para slug:', slug);
+    }
+    
     return verse || null;
   } catch (error) {
-    console.error('Erro ao buscar verso por slug:', error);
+    console.error('❌ Erro geral ao buscar verso por slug:', error);
     return null;
   }
 };
 
-// Função para buscar verso por ID ou slug
+// Função para buscar verso por ID ou slug - CORRIGIDA
 export const getVerse = async (identifier: string): Promise<Verse | null> => {
+  console.log('🔍 Buscando verso com identificador:', identifier);
+  
   // Verificar se é um número (ID) ou string (slug)
   const id = parseInt(identifier);
   if (!isNaN(id)) {
+    console.log('📋 Identificador é um ID numérico:', id);
     return await getVerseById(id);
   } else {
+    console.log('📋 Identificador é um slug:', identifier);
     return await getVerseBySlug(identifier);
   }
 };

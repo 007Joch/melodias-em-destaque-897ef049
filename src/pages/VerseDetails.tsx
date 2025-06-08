@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Plus, Share2, Heart, Video, Loader2, Type } from "lucide-react";
@@ -159,15 +158,9 @@ const VerseDetails = () => {
 
   const handleAddToCart = () => {
     addToCart({
-<<<<<<< HEAD
       id: id.toString(),
       title: verse.titulo_original || 'Dados inconsistentes',
       artist: verse.musical || 'Dados inconsistentes',
-=======
-      id: verse.id.toString(),
-      title: verse.titulo_pt_br || '',
-      artist: verse.musical || '',
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
       category: verse.estilo?.[0] || '',
       image: verse.url_imagem || '/placeholder.svg',
       price: verse.valor ? verse.valor / 100 : 0 // Converter de centavos para reais
@@ -176,13 +169,6 @@ const VerseDetails = () => {
 
   const handleGoBack = () => {
     navigate(-1);
-  };
-
-  // Extrair ID do YouTube se houver URL do YouTube nos dados
-  const getYouTubeId = (url: string | null) => {
-    if (!url) return null;
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
-    return match ? match[1] : null;
   };
 
   return (
@@ -204,11 +190,7 @@ const VerseDetails = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Áudio Original */}
             <div className="space-y-4">
-<<<<<<< HEAD
               {isValidData(audio_original) ? (
-=======
-              {verse.audio_original && getYouTubeId(verse.audio_original) && (
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
                 <Card className="overflow-hidden rounded-xl border-0 shadow-lg">
                   <div className="p-6 bg-gradient-to-br from-red-50 to-pink-50">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -217,11 +199,7 @@ const VerseDetails = () => {
                     </h2>
                     <div className="aspect-video w-full rounded-lg overflow-hidden">
                       <iframe
-<<<<<<< HEAD
                         src={`https://www.youtube.com/embed/${audio_original!.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || ''}`}
-=======
-                        src={`https://www.youtube.com/embed/${getYouTubeId(verse.audio_original)}`}
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
                         className="w-full h-full"
                         allowFullScreen
                         title={`Áudio: ${displayData(titulo_original)}`}
@@ -305,22 +283,14 @@ const VerseDetails = () => {
               {/* Cabeçalho */}
               <div>
                 <span className="inline-block px-3 py-1 text-sm font-medium text-primary bg-primary/10 rounded-full mb-3">
-<<<<<<< HEAD
                   {displayData(estilo?.[0], 'Estilo não definido')}
-=======
-                  {verse.estilo?.[0] || 'Musical'}
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
                 </span>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{displayData(titulo_original)}</h1>
                 <p className="text-xl text-gray-600 mb-4">{displayData(musical)}</p>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                   <span>{(visualizacoes || 0).toLocaleString()} visualizações</span>
                   <span>•</span>
-<<<<<<< HEAD
                   <span>{versionado_em ? new Date(versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
-=======
-                  <span>{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não informada'}</span>
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
                 </div>
               </div>
 
@@ -343,7 +313,6 @@ const VerseDetails = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm font-medium text-gray-600">Origem:</span>
-<<<<<<< HEAD
                     <p className="text-gray-900 font-medium">{displayData(musical)}</p>
                   </div>
                   <div>
@@ -365,46 +334,10 @@ const VerseDetails = () => {
                   <div>
                     <span className="text-sm font-medium text-gray-600">Versionado em:</span>
                     <p className="text-gray-900">{versionado_em ? new Date(versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</p>
-=======
-                    <p className="text-gray-900 font-medium">{verse.origem || 'Não informado'}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Música de:</span>
-                    <p className="text-gray-900 font-medium">{verse.compositor?.[0] || 'Não informado'}</p>
-                  </div>
-                  {verse.letra_original && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">Letra Original:</span>
-                      <p className="text-gray-900">{verse.letra_original}</p>
-                    </div>
-                  )}
-                  {verse.letrista?.[0] && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">Letra original de:</span>
-                      <p className="text-gray-900">{verse.letrista[0]}</p>
-                    </div>
-                  )}
-                  {verse.versionista?.[0] && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">Versão brasileira de:</span>
-                      <p className="text-gray-900">{verse.versionista[0]}</p>
-                    </div>
-                  )}
-                  {verse.revisao?.[0] && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">Texto revisado por:</span>
-                      <p className="text-gray-900">{verse.revisao[0]}</p>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Versionado em:</span>
-                    <p className="text-gray-900">{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não informada'}</p>
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
                   </div>
                 </div>
               </Card>
 
-<<<<<<< HEAD
               {/* Informações Adicionais */}
               {isValidData(versao_brasileira) && (
                 <Card className="p-6 border-0 bg-gray-50 rounded-xl">
@@ -413,8 +346,6 @@ const VerseDetails = () => {
                 </Card>
               )}
 
-=======
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
               {/* Conteúdo Formatado */}
               <Card className="p-6 border-0 bg-gradient-to-br from-primary/5 to-purple-50 rounded-xl">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Conteúdo</h2>

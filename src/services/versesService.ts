@@ -320,6 +320,7 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
   }
 };
 
+<<<<<<< HEAD
 // Função para buscar versos com paginação
 export const getVersesPaginated = async (page: number = 1, limit: number = 50): Promise<{ data: any[], total: number, hasMore: boolean }> => {
   try {
@@ -552,6 +553,47 @@ export const generateSlug = (title: string): string => {
     .trim()
     .replace(/\s+/g, '-') // Substitui espaços por hífens
     .replace(/-+/g, '-'); // Remove hífens duplicados
+=======
+// Função para buscar todos os versos
+export const getAllVerses = async (): Promise<Verse[]> => {
+  try {
+    console.log('=== INICIANDO getAllVerses ===');
+    
+    const { data, error } = await supabase
+      .from('versoes')
+      .select('*')
+      .order('criada_em', { ascending: false });
+
+    console.log('=== RESULTADO DA QUERY ===');
+    console.log('Error:', error);
+    console.log('Data length:', data?.length || 0);
+    console.log('Raw data:', data);
+    
+    if (error) {
+      console.error('Erro na query Supabase:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      console.log('=== DADOS VAZIOS OU NULOS ===');
+      console.log('Data é null?', data === null);
+      console.log('Data é array vazio?', Array.isArray(data) && data.length === 0);
+      return [];
+    }
+    
+    console.log('=== DADOS ENCONTRADOS ===');
+    console.log('Total de registros:', data.length);
+    console.log('Primeiro registro completo:', JSON.stringify(data[0], null, 2));
+    console.log('Campos do primeiro registro:', Object.keys(data[0] || {}));
+    
+    return data;
+  } catch (error) {
+    console.error('=== ERRO GERAL em getAllVerses ===');
+    console.error('Tipo do erro:', typeof error);
+    console.error('Erro completo:', error);
+    throw error;
+  }
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
 };
 
 // Função para buscar um verso por ID
@@ -877,6 +919,7 @@ export const getVersesByArtist = async (musical: string): Promise<Verse[]> => {
     return [];
   }
 };
+<<<<<<< HEAD
 
 // Função para buscar categorias únicas
 export const getCategories = async (): Promise<string[]> => {
@@ -904,3 +947,5 @@ export const getCategories = async (): Promise<string[]> => {
     return [];
   }
 };
+=======
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4

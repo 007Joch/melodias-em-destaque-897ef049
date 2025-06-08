@@ -151,6 +151,7 @@ const CreateVerse = () => {
         toast.success('Verso criado com sucesso!');
         // Resetar o formulário
         setFormData({
+<<<<<<< HEAD
       compositor: '',
       letraOriginal: '',
       letrista: '',
@@ -167,6 +168,25 @@ const CreateVerse = () => {
       imageFile: undefined,
       valor: 0
     });
+=======
+          origem: '',
+          compositor: '',
+          letraOriginal: '',
+          letrista: '',
+          versionista: '',
+          revisao: '',
+          versionadoEm: new Date().toISOString().split('T')[0],
+          titulo_pt_br: '',
+          musical: '',
+          estilo: '',
+          descricao: '',
+          conteudo: '',
+          youtubeUrl: '',
+          imageUrl: '',
+          imageFile: undefined,
+          valor: 0
+        });
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
         setImagePreview('');
         // Navegar para a homepage para ver o novo verso
         setTimeout(() => {
@@ -432,6 +452,9 @@ const CreateVerse = () => {
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
                   />
+                  <div className="mt-1 text-xs text-gray-500">
+                    Insira o valor em reais (ex: 15.99 para R$ 15,99)
+                  </div>
                 </div>
                 
                 <div className="md:col-span-2">

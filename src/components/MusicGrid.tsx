@@ -51,13 +51,19 @@ const MusicGrid = () => {
   const [selectedSort, setSelectedSort] = useState<string>('popular');
   const ITEMS_PER_PAGE = 50;
 
+<<<<<<< HEAD
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const fetchInitialVerses = async () => {
+=======
+  const fetchVerses = useCallback(async () => {
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
     try {
+      console.log('=== MusicGrid: INICIANDO BUSCA ===');
       setIsLoading(true);
       setError(null);
       
+<<<<<<< HEAD
       // Limpa cache antigo para evitar problemas de navegação
       clearCache(['musicgrid-verses']);
       
@@ -68,15 +74,51 @@ const MusicGrid = () => {
       setTotalVerses(result.total);
       setHasMoreData(result.hasMore);
       setCurrentPage(1);
+=======
+      const data = await getAllVerses();
+      
+      console.log('=== MusicGrid: DADOS RECEBIDOS ===');
+      console.log('Tipo dos dados:', typeof data);
+      console.log('É array?', Array.isArray(data));
+      console.log('Length:', data?.length);
+      console.log('Dados completos:', data);
+      
+      if (!data) {
+        console.log('=== MusicGrid: DADOS NULOS ===');
+        setVerses([]);
+        return;
+      }
+      
+      if (!Array.isArray(data)) {
+        console.error('=== MusicGrid: DADOS NÃO SÃO ARRAY ===');
+        console.error('Tipo recebido:', typeof data);
+        console.error('Valor:', data);
+        setError('Formato de dados inválido recebido do servidor');
+        return;
+      }
+      
+      console.log('=== MusicGrid: DEFININDO VERSOS ===');
+      console.log('Definindo verses com:', data.length, 'itens');
+      setVerses(data);
+      
+      console.log('=== MusicGrid: VERSOS DEFINIDOS ===');
+      console.log('Estado verses atualizado');
+      
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
     } catch (err) {
-      console.error('Erro ao carregar versos:', err);
+      console.error('=== MusicGrid: ERRO NA BUSCA ===');
+      console.error('Tipo do erro:', typeof err);
+      console.error('Erro completo:', err);
+      console.error('Stack trace:', err instanceof Error ? err.stack : 'Não disponível');
       setError('Erro ao carregar os versos. Tente novamente.');
     } finally {
+      console.log('=== MusicGrid: FINALIZANDO BUSCA ===');
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+<<<<<<< HEAD
     if (!hasInitialized) {
       setHasInitialized(true);
       fetchInitialVerses();
@@ -112,11 +154,25 @@ const MusicGrid = () => {
   const handleCategoryChange = useCallback((category: string) => {
     setSelectedCategory(category);
   }, []);
+=======
+    console.log('=== MusicGrid: useEffect TRIGGERED ===');
+    fetchVerses();
+  }, [fetchVerses]);
+
+  // Log quando o estado de verses muda
+  useEffect(() => {
+    console.log('=== MusicGrid: ESTADO verses MUDOU ===');
+    console.log('Novo estado verses:', verses);
+    console.log('Length do estado:', verses.length);
+    console.log('Primeiro item do estado:', verses[0]);
+  }, [verses]);
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
 
   const handleStyleChange = useCallback((style: string) => {
     setSelectedStyle(style);
   }, []);
 
+<<<<<<< HEAD
   const handleSortChange = useCallback((sort: string) => {
     setSelectedSort(sort);
   }, []);
@@ -179,8 +235,28 @@ const MusicGrid = () => {
   const displayedVerses = useMemo(() => filteredAndSortedVerses, [filteredAndSortedVerses]);
 
   const hasMoreVerses = useMemo(() => hasMoreData, [hasMoreData]);
+=======
+  const displayedVerses = useMemo(() => {
+    console.log('=== MusicGrid: CALCULANDO displayedVerses ===');
+    console.log('verses.length:', verses.length);
+    console.log('displayCount:', displayCount);
+    const result = verses.slice(0, displayCount);
+    console.log('displayedVerses result:', result);
+    console.log('displayedVerses length:', result.length);
+    return result;
+  }, [verses, displayCount]);
+  
+  const hasMoreVerses = useMemo(() => verses.length > displayCount, [verses.length, displayCount]);
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
+
+  console.log('=== MusicGrid: RENDERIZAÇÃO ===');
+  console.log('isLoading:', isLoading);
+  console.log('error:', error);
+  console.log('verses.length:', verses.length);
+  console.log('displayedVerses.length:', displayedVerses.length);
 
   if (isLoading) {
+    console.log('=== MusicGrid: RENDERIZANDO LOADING ===');
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
@@ -200,6 +276,7 @@ const MusicGrid = () => {
   }
 
   if (error) {
+    console.log('=== MusicGrid: RENDERIZANDO ERROR ===');
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
@@ -224,6 +301,7 @@ const MusicGrid = () => {
   }
 
   if (verses.length === 0) {
+    console.log('=== MusicGrid: RENDERIZANDO EMPTY STATE ===');
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
@@ -232,12 +310,26 @@ const MusicGrid = () => {
             <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
           </div>
           <div className="flex justify-center items-center py-12">
-            <p className="text-gray-600">Nenhum verso encontrado.</p>
+            <div className="text-center">
+              <p className="text-gray-600 mb-4">Nenhum verso encontrado na tabela versoes.</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Verifique se existem registros na tabela ou se estão com status correto.
+              </p>
+              <button 
+                onClick={fetchVerses}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Recarregar
+              </button>
+            </div>
           </div>
         </div>
       </section>
     );
   }
+
+  console.log('=== MusicGrid: RENDERIZANDO GRID ===');
+  console.log('Renderizando grid com', displayedVerses.length, 'versos');
 
   return (
     <section className="py-8 sm:py-12">
@@ -247,6 +339,7 @@ const MusicGrid = () => {
           <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
         </div>
         
+<<<<<<< HEAD
         <FilterBar
           onCategoryChange={handleCategoryChange}
           onStyleChange={handleStyleChange}
@@ -268,6 +361,32 @@ const MusicGrid = () => {
               classificacoes={verse.classificacao_vocal_alt}
             />
           ))}
+=======
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          {displayedVerses.map((verse, index) => {
+            console.log(`=== MusicGrid: RENDERIZANDO CARD ${index} ===`);
+            console.log('Verso completo:', verse);
+            console.log('ID:', verse.id);
+            console.log('titulo_original:', verse.titulo_original);
+            console.log('musical:', verse.musical);
+            console.log('estilo:', verse.estilo);
+            console.log('valor:', verse.valor);
+            console.log('url_imagem:', verse.url_imagem);
+            
+            return (
+              <MusicCard
+                key={verse.id}
+                id={verse.id}
+                title={verse.titulo_original || 'Título não informado'}
+                artist={verse.musical || 'Artista não informado'}
+                image={verse.url_imagem || undefined}
+                category={verse.estilo?.[0] || 'Musical'}
+                views={verse.visualizacoes || 0}
+                price={verse.valor || 0}
+              />
+            );
+          })}
+>>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
         </div>
         
         {hasMoreVerses && (

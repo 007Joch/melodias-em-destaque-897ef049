@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { useAuth } from "@/hooks/useAuthHook";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
@@ -86,9 +86,6 @@ const Login = () => {
             <CardTitle className="text-2xl font-bold text-gray-900">
               {isSignUp ? "Criar conta" : "Entrar na sua conta"}
             </CardTitle>
-            {/* <CardDescription className="text-gray-600">
-              {isSignUp ? "Cadastre-se para descobrir mais músicas" : "Acesse sua conta para descobrir mais músicas"}
-            </CardDescription> */}
           </CardHeader>
           
           <CardContent className="p-6">

@@ -1,11 +1,10 @@
-
 import React from "react";
 import { Search, User, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
-import { useAuth } from "@/hooks/useAuthHook";
+import { useAuth } from "@/hooks/useAuth";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import CartDrawer from "./CartDrawer";

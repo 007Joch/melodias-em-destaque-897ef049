@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Menu, Home, Music, ShoppingCart, User, LogOut, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useAuth } from "@/hooks/useAuthHook";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 
 const MobileMenu = () => {

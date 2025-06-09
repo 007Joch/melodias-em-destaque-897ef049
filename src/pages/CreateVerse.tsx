@@ -342,14 +342,29 @@ const CreateVerse = () => {
                 
                 <FormField
                   control={form.control}
+                  name="letraOriginal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Letra Original</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Letra original da música" className="resize-none min-h-[120px]" {...field} />
+                      </FormControl>
+                      <FormDescription>Letra original da música no idioma original.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
                   name="conteudo"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Conteúdo</FormLabel>
+                      <FormLabel>Conteúdo (Letra em Português)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Conteúdo da música" className="resize-none" {...field} />
+                        <Textarea placeholder="Conteúdo da música em português" className="resize-none min-h-[120px]" {...field} />
                       </FormControl>
-                      <FormDescription>Conteúdo da música.</FormDescription>
+                      <FormDescription>Versão em português ou conteúdo final da música.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -359,14 +374,21 @@ const CreateVerse = () => {
                   {/* Upload de Imagem */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <FormLabel>Imagem</FormLabel>
-                      <Switch
-                        checked={isImageUploadActive}
-                        onCheckedChange={setIsImageUploadActive}
-                      />
+                      <FormLabel className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Imagem de Capa
+                      </FormLabel>
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="image-toggle" className="text-sm">Upload de arquivo</Label>
+                        <Switch
+                          id="image-toggle"
+                          checked={isImageUploadActive}
+                          onCheckedChange={setIsImageUploadActive}
+                        />
+                      </div>
                     </div>
                     <FormDescription>
-                      Selecione uma imagem para o verso.
+                      {isImageUploadActive ? "Selecione um arquivo de imagem" : "Insira uma URL de imagem"}
                     </FormDescription>
                     
                     {isImageUploadActive ? (
@@ -383,6 +405,7 @@ const CreateVerse = () => {
                                   const file = e.target.files?.[0];
                                   field.onChange(file);
                                 }}
+                                className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
                               />
                             </FormControl>
                             <FormMessage />
@@ -396,7 +419,7 @@ const CreateVerse = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <Input placeholder="URL da imagem" {...field} />
+                              <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -407,14 +430,17 @@ const CreateVerse = () => {
                   
                   {/* Áudio Original */}
                   <div className="space-y-2">
-                    <FormLabel>Áudio Original</FormLabel>
+                    <FormLabel className="flex items-center gap-2">
+                      <Music2 className="h-4 w-4" />
+                      Áudio Original
+                    </FormLabel>
                     <FormField
                       control={form.control}
                       name="audioOriginal"
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Input placeholder="URL do áudio original" {...field} />
+                            <Input placeholder="https://exemplo.com/audio.mp3" {...field} />
                           </FormControl>
                           <FormDescription>URL do áudio original da música.</FormDescription>
                           <FormMessage />
@@ -425,11 +451,17 @@ const CreateVerse = () => {
                 </div>
               </div>
               
-              <Separator className="my-4" />
+              <Separator className="my-6" />
               
               {/* Ações */}
-              <div className="flex justify-end">
-                <Button type="submit">Criar Verso</Button>
+              <div className="flex justify-between">
+                <Button type="button" variant="outline" onClick={() => navigate('/')}>
+                  Cancelar
+                </Button>
+                <Button type="submit" className="min-w-[120px]">
+                  <PencilRuler className="h-4 w-4 mr-2" />
+                  Criar Verso
+                </Button>
               </div>
             </form>
           </Form>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Plus, Share2, Heart, Video, Loader2, Type } from "lucide-react";
@@ -35,23 +34,25 @@ const VerseDetails = () => {
 
       try {
         setIsLoading(true);
-        
-        // Limpa cache antigo para evitar problemas de navegação
-        clearCache([`verse-${identifier}`]);
+        setError(null);
         
         console.log('🔍 Buscando verso com identificador:', identifier);
         const data = await getVerse(identifier);
         
         if (data) {
-          console.log('✅ Verso encontrado:', data);
+          console.log('✅ Verso encontrado:', { id: data.id, titulo: data.titulo_pt_br || data.titulo_original });
           setVerse(data);
+          
           // Incrementar visualizações
-          await incrementViews(data.id);
-          setError(null);
+          try {
+            await incrementViews(data.id);
+          } catch (viewError) {
+            console.warn('⚠️ Erro ao incrementar visualizações:', viewError);
+          }
           
           // Invalida cache para manter dados atualizados
           invalidateQueries(['verses', 'homepage-verses', 'musicgrid-verses']);
-         } else {
+        } else {
           console.error('❌ Verso não encontrado');
           setError('Verso não encontrado');
         }
@@ -64,7 +65,7 @@ const VerseDetails = () => {
     };
 
     fetchVerse();
-  }, [id, slug, clearCache, invalidateQueries]);
+  }, [id, slug, invalidateQueries]);
 
   if (isLoading) {
     return (
@@ -105,7 +106,7 @@ const VerseDetails = () => {
     );
   }
 
-  // Função auxiliar melhorada para verificar se um valor é válido
+  // Função auxiliar simplificada para verificar se um valor é válido
   const isValidData = (value: any): boolean => {
     if (value === null || value === undefined) return false;
     if (typeof value === 'string') {
@@ -118,20 +119,19 @@ const VerseDetails = () => {
     if (typeof value === 'number') {
       return !isNaN(value) && isFinite(value);
     }
-    return true;
+    return Boolean(value);
   };
 
-  // Função melhorada para exibir dados
+  // Função simplificada para exibir dados
   const displayData = (value: any, fallback: string = 'Não informado'): string => {
     if (!isValidData(value)) return fallback;
     
-    // Se for um array, juntar os elementos com vírgula
     if (Array.isArray(value)) {
       const validItems = value.filter(item => isValidData(item));
       return validItems.length > 0 ? validItems.join(', ') : fallback;
     }
     
-    return value.toString();
+    return String(value);
   };
 
   const handleAddToCart = () => {

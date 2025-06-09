@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Plus, Share2, Heart, Video, Loader2, Type } from "lucide-react";
@@ -7,17 +8,43 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/hooks/useCart";
 import { CartProvider } from "@/hooks/useCart";
-import { useAppCache } from "@/hooks/useAppCache";
 import { getVerse, incrementViews } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
 
+// Função auxiliar para verificar se um valor é válido
+const isValidData = (value: any): boolean => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed !== '' && trimmed.toLowerCase() !== 'null' && trimmed !== 'undefined';
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0 && value.some(item => isValidData(item));
+  }
+  if (typeof value === 'number') {
+    return !isNaN(value) && isFinite(value);
+  }
+  return Boolean(value);
+};
+
+// Função para exibir dados com fallback
+const displayData = (value: any, fallback: string = 'Não informado'): string => {
+  if (!isValidData(value)) return fallback;
+  
+  if (Array.isArray(value)) {
+    const validItems = value.filter(item => isValidData(item));
+    return validItems.length > 0 ? validItems.join(', ') : fallback;
+  }
+  
+  return String(value);
+};
+
 const VerseDetails = () => {
   const { id, slug } = useParams<{ id?: string; slug?: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const { clearCache, invalidateQueries } = useAppCache();
   const [verse, setVerse] = useState<Verse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +76,6 @@ const VerseDetails = () => {
           } catch (viewError) {
             console.warn('⚠️ Erro ao incrementar visualizações:', viewError);
           }
-          
-          // Invalida cache para manter dados atualizados
-          invalidateQueries(['verses', 'homepage-verses', 'musicgrid-verses']);
         } else {
           console.error('❌ Verso não encontrado');
           setError('Verso não encontrado');
@@ -65,7 +89,7 @@ const VerseDetails = () => {
     };
 
     fetchVerse();
-  }, [id, slug, invalidateQueries]);
+  }, [id, slug]);
 
   if (isLoading) {
     return (
@@ -105,34 +129,6 @@ const VerseDetails = () => {
       </div>
     );
   }
-
-  // Função auxiliar simplificada para verificar se um valor é válido
-  const isValidData = (value: any): boolean => {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      return trimmed !== '' && trimmed.toLowerCase() !== 'null' && trimmed !== 'undefined';
-    }
-    if (Array.isArray(value)) {
-      return value.length > 0 && value.some(item => isValidData(item));
-    }
-    if (typeof value === 'number') {
-      return !isNaN(value) && isFinite(value);
-    }
-    return Boolean(value);
-  };
-
-  // Função simplificada para exibir dados
-  const displayData = (value: any, fallback: string = 'Não informado'): string => {
-    if (!isValidData(value)) return fallback;
-    
-    if (Array.isArray(value)) {
-      const validItems = value.filter(item => isValidData(item));
-      return validItems.length > 0 ? validItems.join(', ') : fallback;
-    }
-    
-    return String(value);
-  };
 
   const handleAddToCart = () => {
     addToCart({

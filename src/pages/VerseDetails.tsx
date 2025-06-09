@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Plus, Share2, Heart, Video, Loader2, Type } from "lucide-react";
@@ -51,9 +50,29 @@ const VerseDetails = () => {
 
   useEffect(() => {
     const fetchVerse = async () => {
-      const identifier = id || slug;
+      // Extrair identificador da URL atual
+      const currentPath = window.location.pathname;
+      const pathSegments = currentPath.split('/').filter(segment => segment);
+      
+      // O identificador pode estar em diferentes posições dependendo da estrutura da URL
+      let identifier = id || slug;
+      
+      // Se não temos identificador dos params, pegar da URL
+      if (!identifier && pathSegments.length > 0) {
+        // Pegar o último segmento que não seja vazio
+        identifier = pathSegments[pathSegments.length - 1];
+      }
+      
+      console.log('🔍 Informações da URL:', {
+        currentPath,
+        pathSegments,
+        id,
+        slug,
+        finalIdentifier: identifier
+      });
       
       if (!identifier) {
+        console.error('❌ Nenhum identificador encontrado na URL');
         setError('Identificador do verso não fornecido');
         setIsLoading(false);
         return;
@@ -73,11 +92,12 @@ const VerseDetails = () => {
           // Incrementar visualizações
           try {
             await incrementViews(data.id);
+            console.log('✅ Visualizações incrementadas para verso:', data.id);
           } catch (viewError) {
             console.warn('⚠️ Erro ao incrementar visualizações:', viewError);
           }
         } else {
-          console.error('❌ Verso não encontrado');
+          console.error('❌ Verso não encontrado para identificador:', identifier);
           setError('Verso não encontrado');
         }
       } catch (err) {
@@ -89,7 +109,7 @@ const VerseDetails = () => {
     };
 
     fetchVerse();
-  }, [id, slug]);
+  }, [id, slug]); // Dependências do useEffect
 
   if (isLoading) {
     return (

@@ -42,11 +42,7 @@ const ensureVerseData = (verse: any) => {
     title: verse.titulo_original || verse.titulo_pt_br || 'Título não informado',
     artist: verse.musical || 'Artista não informado',
     image: verse.url_imagem && verse.url_imagem !== 'null' ? verse.url_imagem : '/musical-generic.svg',
-<<<<<<< HEAD
     price: verse.valor || 0, // Valor direto do banco
-=======
-    price: verse.valor ? verse.valor / 100 : 0, // Converter de centavos para reais
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
     views: verse.visualizacoes || 0,
     category: getCategoryFromVerse(verse),
     classificacoes: verse.classificacao_vocal_alt
@@ -73,12 +69,6 @@ const MusicGrid = () => {
       setIsLoading(true);
       setError(null);
       
-<<<<<<< HEAD
-=======
-      // Limpa cache antigo para evitar problemas de navegação
-      clearCache(['musicgrid-verses']);
-      
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
       console.log('Iniciando busca de versos...');
       const result = await getVersesPaginated(1, ITEMS_PER_PAGE);
       console.log(`Versos recebidos: ${result.data.length} de ${result.total}`);

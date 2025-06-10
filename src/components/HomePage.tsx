@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getVersesPaginated } from '../services/versesService';
-import { useAppCache } from '../hooks/useAppCache';
 import MusicCard from './MusicCard';
 import { Loader2, Plus } from 'lucide-react';
 import { Database } from '../integrations/supabase/types';
@@ -30,26 +30,14 @@ const getCategoryFromVerse = (verse: any): string => {
   return 'Teatro Musical';
 };
 
-// Função para obter uma imagem válida
-const getImageFromVerse = (verse: any): string => {
-  // Verificar os possíveis campos de imagem
-  if (verse.url_imagem) return verse.url_imagem;
-  if (verse.image_url) return verse.image_url;
-  
-  // Imagem padrão
-  return '/musical-generic.svg';
-};
-
 const HomePage: React.FC = () => {
-  const { clearCache, invalidateQueries, prefetchData } = useAppCache();
   const [verses, setVerses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalVerses, setTotalVerses] = useState(0);
-  const [hasMore, setHasMore] = useState(true); // Sempre inicia como true
-  const [isPrefetching, setIsPrefetching] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
@@ -57,9 +45,6 @@ const HomePage: React.FC = () => {
       try {
         setIsLoading(true);
         setError(null);
-        
-        // Limpa cache antigo para evitar problemas de navegação
-        clearCache(['homepage-verses']);
         
         console.log('Iniciando busca de versos na HomePage...');
         const result = await getVersesPaginated(1, ITEMS_PER_PAGE);
@@ -77,7 +62,7 @@ const HomePage: React.FC = () => {
     };
 
     fetchInitialVerses();
-  }, [clearCache]);
+  }, []);
 
   const handleLoadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
@@ -92,7 +77,6 @@ const HomePage: React.FC = () => {
       const result = await getVersesPaginated(nextPage, ITEMS_PER_PAGE);
       console.log(`✅ ${result.data.length} novos versos carregados`);
       
-      // Otimização: usar callback para evitar re-renders desnecessários
       setVerses(prev => {
         const newVerses = [...prev, ...result.data];
         console.log(`📊 Total de versos carregados: ${newVerses.length}`);
@@ -102,63 +86,24 @@ const HomePage: React.FC = () => {
       setHasMore(result.hasMore);
       setCurrentPage(nextPage);
       
-      // Invalida cache para manter dados atualizados
-      invalidateQueries(['verses', 'homepage-verses']);
-      
-      // Scroll suave para os novos itens após um pequeno delay
-      setTimeout(() => {
-        const newItemsStart = document.querySelector(`[data-verse-index="${verses.length}"]`);
-        if (newItemsStart) {
-          newItemsStart.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }, 100);
-      
-      // Pré-carrega próxima página se ainda há mais dados
-      if (result.hasMore && nextPage + 1 <= Math.ceil(totalVerses / ITEMS_PER_PAGE)) {
-        setTimeout(() => {
-          prefetchNextPage(nextPage + 1);
-        }, 1000);
-      }
-      
     } catch (err) {
       console.error('❌ Erro ao carregar mais versos:', err);
       setError('Erro ao carregar mais versos. Tente novamente.');
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, currentPage, ITEMS_PER_PAGE, invalidateQueries, verses.length, totalVerses, prefetchData]);
-
-  // Função para pré-carregar próxima página
-  const prefetchNextPage = useCallback(async (pageToFetch: number) => {
-    if (isPrefetching) return;
-    
-    try {
-      setIsPrefetching(true);
-      console.log(`🚀 Pré-carregando página ${pageToFetch}...`);
-      
-      await prefetchData(
-        `homepage-verses-page-${pageToFetch}`,
-        () => getVersesPaginated(pageToFetch, ITEMS_PER_PAGE)
-      );
-      
-      console.log(`✅ Página ${pageToFetch} pré-carregada com sucesso`);
-    } catch (err) {
-      console.log(`⚠️ Falha ao pré-carregar página ${pageToFetch}:`, err);
-    } finally {
-      setIsPrefetching(false);
-    }
-  }, [isPrefetching, prefetchData, ITEMS_PER_PAGE]);
+  }, [isLoadingMore, hasMore, currentPage, ITEMS_PER_PAGE]);
 
   // Mapear dados dos versos para o formato esperado pelo MusicCard com memoização
   const displayedVerses = useMemo(() => {
     return verses.map((verse, index) => ({
       id: verse.id,
       title: verse.titulo_original || 'Dados inconsistentes',
-          artist: verse.musical || 'Dados inconsistentes',
+      artist: verse.musical || 'Dados inconsistentes',
       image: verse.url_imagem || '/musical-generic.svg',
       category: getCategoryFromVerse(verse),
       views: verse.visualizacoes || 0,
-      price: verse.valor ? verse.valor / 100 : 0, // Converter de centavos para reais
+      price: verse.valor || 0, // Valor direto do banco
       classificacoes: verse.classificacao_vocal_alt || [],
       dataIndex: index // Para scroll otimizado
     }));
@@ -248,14 +193,6 @@ const HomePage: React.FC = () => {
                        </span>
                      </div>
                    )}
-                   {isPrefetching && (
-                     <div className="bg-yellow-100 px-3 py-1 rounded-full flex items-center space-x-1">
-                       <Loader2 className="w-3 h-3 animate-spin text-yellow-600" />
-                       <span className="text-xs text-yellow-700 font-medium">
-                         Preparando...
-                       </span>
-                     </div>
-                   )}
                 </div>
               </div>
               <div className="mt-2 bg-blue-200 rounded-full h-2">
@@ -300,12 +237,9 @@ const HomePage: React.FC = () => {
             <button
                onClick={handleLoadMore}
                disabled={isLoadingMore}
-               className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none relative overflow-hidden"
+               className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
              >
-               {isPrefetching && !isLoadingMore && (
-                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 animate-pulse"></div>
-               )}
-              <div className="relative z-10 flex items-center space-x-3">
+              <div className="flex items-center space-x-3">
                  {isLoadingMore ? (
                    <>
                      <Loader2 className="w-5 h-5 animate-spin" />
@@ -314,17 +248,10 @@ const HomePage: React.FC = () => {
                  ) : (
                    <>
                      <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                     <span>
-                       {isPrefetching ? 'Dados Prontos - ' : ''}Carregar Mais {ITEMS_PER_PAGE} Versos
-                     </span>
+                     <span>Carregar Mais {ITEMS_PER_PAGE} Versos</span>
                      <div className="bg-white/20 px-2 py-1 rounded-full">
                        <span className="text-xs font-bold">{Math.min(ITEMS_PER_PAGE, totalVerses - verses.length)}</span>
                      </div>
-                     {isPrefetching && (
-                       <div className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full">
-                         <span className="text-xs font-bold">⚡</span>
-                       </div>
-                     )}
                    </>
                  )}
                </div>

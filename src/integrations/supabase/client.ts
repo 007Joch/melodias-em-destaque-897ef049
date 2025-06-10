@@ -8,14 +8,30 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false, // Desabilitar para evitar conflitos
-    flowType: "implicit",
-    debug: false, // Desabilitar debug para reduzir logs
-    // Removida a propriedade skipEmailVerification que não é mais suportada
+    detectSessionInUrl: true,
+    flowType: "pkce",
+    debug: false,
+    // Configurações para máxima persistência
+    storage: window.localStorage,
+    storageKey: 'sb-hlrcvvaneofcpncbqjyg-auth-token',
+    // Sem timeout de sessão
+    sessionRefreshMargin: 60, // Renovar 60 segundos antes de expirar
   },
   global: {
     headers: {
-      'X-Client-Info': 'musical-em-bom-portugues'
+      'X-Client-Info': 'musical-em-bom-portugues',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  },
+  // Desabilitar qualquer cache interno
+  realtime: {
+    params: {
+      eventsPerSecond: 10
     }
   }
 });
+
+// Log para debug
+console.log('Supabase client configurado');

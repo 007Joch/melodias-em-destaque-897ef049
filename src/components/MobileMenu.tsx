@@ -1,25 +1,43 @@
 
-import { useState } from "react";
-import { Menu, Home, Music, ShoppingCart, User, LogOut, List } from "lucide-react";
+import React, { useState } from "react";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useAuth } from "@/hooks/useAuthHook";
+import { Menu, Home, Music, List, Users, LogOut, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 const MobileMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, signOut, profile } = useAuth();
+  const { user, signOut, profile, loading } = useAuth();
 
-  const menuItems = [
-    { icon: Home, label: "Início", href: "/" },
-    { icon: Music, label: "Músicas", href: "/" },
-    { icon: List, label: "Gerenciar Versos", href: "/manage-verses" },
-  ];
+  // Definir itens do menu - visíveis apenas para usuários logados
+  const menuItems = React.useMemo(() => {
+    const baseItems = [
+      { icon: Home, label: "Início", href: "/" },
+      { icon: Music, label: "Músicas", href: "/music" }
+    ];
+
+    // Adicionar itens de gerenciamento apenas para admins
+    if (profile?.role === 'admin') {
+      baseItems.push(
+        { icon: List, label: "Gerenciar Versos", href: "/manage-verses" },
+        { icon: Users, label: "Gerenciar Usuários", href: "/manage-users" }
+      );
+    }
+
+    return baseItems;
+  }, [profile?.role]);
 
   const handleSignOut = async () => {
     await signOut();
     setIsOpen(false);
   };
+
+  // Não exibir o menu para usuários não logados
+  if (!user) {
+    return null;
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -30,6 +48,10 @@ const MobileMenu = () => {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-80 p-0">
+        <VisuallyHidden>
+          <SheetTitle>Menu de Navegação</SheetTitle>
+          <SheetDescription>Menu principal para navegação no site</SheetDescription>
+        </VisuallyHidden>
         <div className="flex flex-col h-full">
           {/* Header do Menu */}
           <div className="flex items-center justify-between p-6 border-b">
@@ -87,23 +109,14 @@ const MobileMenu = () => {
 
           {/* Footer do Menu */}
           <div className="p-6 border-t">
-            {user ? (
-              <Button
-                onClick={handleSignOut}
-                variant="outline"
-                className="w-full justify-start"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-              </Button>
-            ) : (
-              <Link to="/login" onClick={() => setIsOpen(false)}>
-                <Button className="w-full">
-                  <User className="w-4 h-4 mr-2" />
-                  Entrar
-                </Button>
-              </Link>
-            )}
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
           </div>
         </div>
       </SheetContent>

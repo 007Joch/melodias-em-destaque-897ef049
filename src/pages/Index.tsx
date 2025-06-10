@@ -6,10 +6,12 @@ import MusicGrid from "@/components/MusicGrid";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/hooks/useCart";
 
+
 const Index = () => {
   return (
     <CartProvider>
       <div className="min-h-screen bg-white">
+
         <Header />
         <main>
           <FeaturedCarousel />

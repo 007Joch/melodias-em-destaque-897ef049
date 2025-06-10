@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Link, useNavigate } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
-import { useAppCache } from '@/hooks/useAppCache';
+import { useAuth } from '@/hooks/useAuth';
 import { getVersesPaginated, deleteVerse, getCategories, generateSlug } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
 import { toast } from '@/components/ui/sonner';
@@ -18,7 +18,70 @@ type Verse = Database['public']['Tables']['versoes']['Row'];
 
 const ManageVerses = () => {
   const navigate = useNavigate();
-  const { clearCache, invalidateQueries } = useAppCache();
+  const { user, profile, loading } = useAuth();
+
+
+  // Debug: Log do estado atual
+  console.log('🔍 ManageVerses - Estado atual:', {
+    loading,
+    user: user?.email,
+    profile: profile?.role,
+    hasUser: !!user,
+    hasProfile: !!profile
+  });
+
+  // Aguardar carregamento antes de verificar permissões
+  if (loading) {
+    console.log('⏳ ManageVerses - Aguardando carregamento...');
+    return (
+      <CartProvider>
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center">
+              <p className="text-gray-600">Carregando...</p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      </CartProvider>
+    );
+  }
+
+  // Verificar se o usuário é admin
+  const isAdmin = user && profile && profile.role === 'admin';
+  console.log('🔐 ManageVerses - Verificação de admin:', {
+    isAdmin,
+    userExists: !!user,
+    profileExists: !!profile,
+    role: profile?.role
+  });
+
+  if (!isAdmin) {
+    console.log('❌ ManageVerses - Acesso negado');
+    return (
+      <CartProvider>
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">Acesso Negado</h1>
+              <p className="text-gray-600 mb-6">Você não tem permissão para acessar esta página.</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Debug: User: {user?.email || 'Nenhum'} | Profile: {profile?.role || 'Nenhum'}
+              </p>
+              <Button onClick={() => navigate('/')} className="bg-primary hover:bg-primary/90">
+                Voltar ao Início
+              </Button>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      </CartProvider>
+    );
+  }
+
+  console.log('✅ ManageVerses - Acesso autorizado para admin');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -85,8 +148,6 @@ const ManageVerses = () => {
   });
 
   const handleEdit = (id: number) => {
-    // Limpa cache antes de navegar para evitar problemas
-    clearCache(['verses', 'categories']);
     navigate(`/edit-verse/${id}`);
   };
 

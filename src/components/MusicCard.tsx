@@ -21,25 +21,51 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
   const { addToCart } = useCart();
   const verseId = id ? String(id) : `${title}-${artist}`.toLowerCase().replace(/\s+/g, '-');
 
-  console.log('=== MusicCard: RENDERIZAÇÃO ===');
-  console.log('Props recebidas:', { id, title, artist, image, category, views, price });
-  console.log('verseId calculado:', verseId);
-
   const handleAddToCart = () => {
-    console.log('=== MusicCard: ADICIONANDO AO CARRINHO ===');
     addToCart({
       id: verseId,
       title,
       artist,
       category,
-<<<<<<< HEAD
       image,
       price: price || 0
     });
   };
 
-  // Garantir que a imagem seja válida - verificar se é uma URL válida
-  const validImage = image && image.trim() !== '' && image !== 'null' ? image : '/musical-generic.svg';
+  // Função para formatar preço em reais brasileiros
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  // Verificar se a imagem é válida
+  const getValidImage = () => {
+    console.log('🖼️ Verificando imagem para o verso:', { id, title, image });
+    
+    if (!image || image.trim() === '' || image === 'null') {
+      console.log('❌ Imagem inválida ou vazia, usando genérica');
+      return '/musical-generic.svg';
+    }
+    
+    // Se a imagem contém o path do bucket capas ou é do Supabase, usar ela
+    if (image.includes('/capas/') || image.includes('supabase.co') || image.includes('hlrcvvaneofcpncbqjyg')) {
+      console.log('✅ Imagem válida do Supabase:', image);
+      return image;
+    }
+    
+    // Se for uma URL externa válida, usar ela
+    if (image.startsWith('http')) {
+      console.log('✅ URL externa válida:', image);
+      return image;
+    }
+    
+    console.log('⚠️ Imagem não reconhecida, usando genérica:', image);
+    return '/musical-generic.svg';
+  };
+
+  const validImage = getValidImage();
   
   return (
     <Card className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white">
@@ -53,57 +79,23 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
               alt={title}
               className="w-full h-full object-cover"
               onError={(e) => {
-                // Fallback para imagem genérica em caso de erro
+                console.log('❌ Erro ao carregar imagem, usando fallback');
                 const target = e.target as HTMLImageElement;
                 target.onerror = null;
                 target.src = '/musical-generic.svg';
               }}
+              onLoad={() => {
+                console.log('✅ Imagem carregada com sucesso:', validImage);
+              }}
             />
-=======
-      image: image || '/placeholder.svg'
-    });
-  };
-
-  // Função para formatar o preço em reais brasileiros
-  const formatPrice = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
-  console.log('=== MusicCard: RENDERIZANDO COMPONENTE ===');
-
-  return (
-    <Card className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 hover-scale bg-white">
-      <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-        {image ? (
-          <img
-            src={image}
-            alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              console.log('=== MusicCard: ERRO AO CARREGAR IMAGEM ===');
-              console.log('URL da imagem:', image);
-              e.currentTarget.style.display = 'none';
-            }}
-            onLoad={() => {
-              console.log('=== MusicCard: IMAGEM CARREGADA COM SUCESSO ===');
-              console.log('URL da imagem:', image);
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-purple-100">
-            <Music className="w-8 h-8 sm:w-12 sm:h-12 text-primary/60" />
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
           </div>
-          {/* Valor abaixo da thumbnail */}
+          {/* Valor formatado em reais brasileiros */}
           {price !== undefined && price > 0 ? (
             <span className="text-sm font-semibold text-gray-900">
-              R$ {price.toFixed(2).replace('.', ',')}
+              {formatPrice(price)}
             </span>
           ) : (
-            <span className="text-sm font-semibold text-gray-900">[valor]</span>
+            <span className="text-sm font-semibold text-gray-600">Gratuito</span>
           )}
         </div>
         
@@ -112,11 +104,11 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
           {/* Título e Musical */}
           <Link to={`/${generateSlug(title || '')}`} className="block">
             <h3 className="font-bold text-gray-900 text-base sm:text-lg hover:text-primary transition-colors mb-1">
-              {title || 'Dados inconsistentes'}
+              {title || 'Título não informado'}
             </h3>
           </Link>
           <p className="text-sm text-gray-600 mb-2 line-clamp-1">
-            {artist || 'Dados inconsistentes'}
+            {artist || 'Artista não informado'}
           </p>
           
           {/* Tags de classificação dinâmicas */}
@@ -125,7 +117,7 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
               {classificacoes.map((classificacao, index) => (
                 <span 
                   key={index}
-                  className="inline-block px-3 py-1 text-xs font-semibold text-white bg-gradient-to-r from-primary to-purple-600 rounded-full shadow-sm"
+                  className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full"
                 >
                   {classificacao}
                 </span>
@@ -141,39 +133,7 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
             <Plus className="w-4 h-4 mr-2" />
             Adicionar
           </Button>
-<<<<<<< HEAD
         </div>
-=======
-        </Link>
-      </div>
-      
-      <div className="p-3 sm:p-4">
-        <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full mb-2">
-          {category}
-        </span>
-        <Link to={`/verse/${verseId}`} className="block">
-          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm sm:text-base hover:text-primary transition-colors">{title}</h3>
-        </Link>
-        <p className="text-xs sm:text-sm text-gray-600 mb-2">{artist}</p>
-        
-        <div className="flex items-center justify-between mb-3">
-          {views !== undefined && views > 0 && (
-            <p className="text-xs text-gray-500">{views.toLocaleString()} visualizações</p>
-          )}
-          
-          {price !== undefined && price > 0 && (
-            <p className="text-sm font-bold text-primary">{formatPrice(price)}</p>
-          )}
-        </div>
-        
-        <Button 
-          onClick={handleAddToCart}
-          className="w-full bg-primary hover:bg-primary/90 rounded-full transition-all duration-200 text-sm py-2"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Adicionar
-        </Button>
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
       </div>
     </Card>
   );

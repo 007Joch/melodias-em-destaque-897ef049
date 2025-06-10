@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Plus, Share2, Heart, Video, Loader2, Type } from "lucide-react";
@@ -8,26 +7,73 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/hooks/useCart";
 import { CartProvider } from "@/hooks/useCart";
-import { useAppCache } from "@/hooks/useAppCache";
-import { getVerse, incrementViews } from '../services/versesService';
+import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
+
+// Função auxiliar para verificar se um valor é válido
+const isValidData = (value: any): boolean => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed !== '' && trimmed.toLowerCase() !== 'null' && trimmed !== 'undefined';
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0 && value.some(item => isValidData(item));
+  }
+  if (typeof value === 'number') {
+    return !isNaN(value) && isFinite(value);
+  }
+  return Boolean(value);
+};
+
+// Função para exibir dados com fallback
+const displayData = (value: any, fallback: string = 'Não informado'): string => {
+  if (!isValidData(value)) return fallback;
+  
+  if (Array.isArray(value)) {
+    const validItems = value.filter(item => isValidData(item));
+    return validItems.length > 0 ? validItems.join(', ') : fallback;
+  }
+  
+  return String(value);
+};
 
 const VerseDetails = () => {
   const { id, slug } = useParams<{ id?: string; slug?: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const { clearCache, invalidateQueries } = useAppCache();
   const [verse, setVerse] = useState<Verse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [relatedVerses, setRelatedVerses] = useState<Verse[]>([]);
 
   useEffect(() => {
     const fetchVerse = async () => {
-      const identifier = id || slug;
+      // Extrair identificador da URL atual
+      const currentPath = window.location.pathname;
+      const pathSegments = currentPath.split('/').filter(segment => segment);
+      
+      // O identificador pode estar em diferentes posições dependendo da estrutura da URL
+      let identifier = id || slug;
+      
+      // Se não temos identificador dos params, pegar da URL
+      if (!identifier && pathSegments.length > 0) {
+        // Pegar o último segmento que não seja vazio
+        identifier = pathSegments[pathSegments.length - 1];
+      }
+      
+      console.log('🔍 Informações da URL:', {
+        currentPath,
+        pathSegments,
+        id,
+        slug,
+        finalIdentifier: identifier
+      });
       
       if (!identifier) {
+        console.error('❌ Nenhum identificador encontrado na URL');
         setError('Identificador do verso não fornecido');
         setIsLoading(false);
         return;
@@ -35,65 +81,38 @@ const VerseDetails = () => {
 
       try {
         setIsLoading(true);
+        setError(null);
         
-        // Limpa cache antigo para evitar problemas de navegação
-        clearCache([`verse-${identifier}`]);
-        
+        console.log('🔍 Buscando verso com identificador:', identifier);
         const data = await getVerse(identifier);
         
         if (data) {
+          console.log('✅ Verso encontrado:', { id: data.id, titulo: data.titulo_pt_br || data.titulo_original });
           setVerse(data);
-          // Incrementar visualizações
-          await incrementViews(data.id);
-          setError(null);
           
-          // Invalida cache para manter dados atualizados
-          invalidateQueries(['verses', 'homepage-verses', 'musicgrid-verses']);
-         } else {
-          // Criar um objeto verse vazio para permitir exibição da página
-          setVerse({
-            id: parseInt(identifier) || 0,
-            titulo_original: null,
-            titulo_pt_br: null,
-            musical: null,
-            estilo: null,
-            compositor: null,
-            letrista: null,
-            versionista: null,
-            revisao: null,
-            versao_brasileira: null,
-            conteudo: null,
-            audio_original: null,
-            valor: null,
-            visualizacoes: null,
-            versionado_em: null,
-            url_imagem: null,
-            status: null,
-            criada_em: null,
-            atualizada_em: null,
-            criada_por: null,
-            titulo_alt: null,
-            musical_alt: null,
-            solistas_masculinos: null,
-            solistas_femininos: null,
-            coro_masculino: null,
-            coro_feminino: null,
-            natureza: null,
-            dificuldade: null,
-            origem: null,
-            ano_gravacao: null,
-            elenco: null,
-            audio_instrumental: null,
-            pdf: null,
-            letra_original: null,
-            compras: null,
-            classificacao_vocal_alt: null,
-            versoes_irmas: null
-          });
-          setError(null);
+          // Incrementar visualizações
+          try {
+            await incrementViews(data.id);
+            console.log('✅ Visualizações incrementadas para verso:', data.id);
+          } catch (viewError) {
+            console.warn('⚠️ Erro ao incrementar visualizações:', viewError);
+          }
+          
+          // Buscar versões irmãs se existirem
+          if (data.versoes_irmas && data.versoes_irmas.length > 0) {
+            try {
+              const relatedData = await getVersesByIds(data.versoes_irmas);
+              setRelatedVerses(relatedData);
+            } catch (err) {
+              console.error('Erro ao carregar versões irmãs:', err);
+            }
+          }
+        } else {
+          console.error('❌ Verso não encontrado para identificador:', identifier);
+          setError('Verso não encontrado');
         }
       } catch (err) {
-        console.error('Erro ao carregar verso:', err);
+        console.error('❌ Erro ao carregar verso:', err);
         setError('Erro ao carregar dados do verso');
       } finally {
         setIsLoading(false);
@@ -101,7 +120,7 @@ const VerseDetails = () => {
     };
 
     fetchVerse();
-  }, [id, slug, clearCache, invalidateQueries]);
+  }, [id, slug]); // Dependências do useEffect
 
   if (isLoading) {
     return (
@@ -114,63 +133,42 @@ const VerseDetails = () => {
     );
   }
 
-  // Função auxiliar para verificar se um valor é válido
-  const isValidData = (value: any): boolean => {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'string' && value.trim() === '') return false;
-    if (Array.isArray(value) && value.length === 0) return false;
-    return true;
-  };
-
-  // Função para exibir dados ou mensagem de inconsistência
-  const displayData = (value: any, fallback: string = 'Dados inconsistentes'): string => {
-    if (!isValidData(value)) return fallback;
-    
-    // Se for um array, juntar os elementos com vírgula
-    if (Array.isArray(value)) {
-      return value.join(', ');
-    }
-    
-    return value.toString();
-  };
-
-  // Se não há verso carregado, não renderizar nada (loading já foi tratado acima)
-  if (!verse) {
-    return null;
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+        </div>
+      </div>
+    );
   }
 
-  // Destructuring das propriedades do verse
-  const {
-    audio_original,
-    titulo_original,
-    valor,
-    estilo,
-    musical,
-    visualizacoes,
-    versionado_em,
-    titulo_pt_br,
-    compositor,
-    letrista,
-    versionista,
-    revisao,
-    versao_brasileira,
-    conteudo
-  } = verse;
+  if (!verse) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Verso não encontrado</p>
+          <Button onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleAddToCart = () => {
     addToCart({
-<<<<<<< HEAD
-      id: id.toString(),
-      title: verse.titulo_original || 'Dados inconsistentes',
-      artist: verse.musical || 'Dados inconsistentes',
-=======
       id: verse.id.toString(),
-      title: verse.titulo_pt_br || '',
-      artist: verse.musical || '',
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
-      category: verse.estilo?.[0] || '',
+      title: displayData(verse.titulo_original || verse.titulo_pt_br, 'Título'),
+      artist: displayData(verse.musical, 'Musical'),
+      category: displayData(verse.estilo?.[0], 'Categoria'),
       image: verse.url_imagem || '/placeholder.svg',
-      price: verse.valor ? verse.valor / 100 : 0 // Converter de centavos para reais
+      price: verse.valor || 0 // Valor direto do banco
     });
   };
 
@@ -178,10 +176,10 @@ const VerseDetails = () => {
     navigate(-1);
   };
 
-  // Extrair ID do YouTube se houver URL do YouTube nos dados
-  const getYouTubeId = (url: string | null) => {
+  // Função para extrair ID do YouTube
+  const getYouTubeId = (url: string): string | null => {
     if (!url) return null;
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
     return match ? match[1] : null;
   };
 
@@ -204,81 +202,86 @@ const VerseDetails = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Áudio Original */}
             <div className="space-y-4">
-<<<<<<< HEAD
-              {isValidData(audio_original) ? (
-=======
-              {verse.audio_original && getYouTubeId(verse.audio_original) && (
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
+              {isValidData(verse.audio_original) ? (
                 <Card className="overflow-hidden rounded-xl border-0 shadow-lg">
-                  <div className="p-6 bg-gradient-to-br from-red-50 to-pink-50">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className="p-3 bg-gradient-to-br from-red-50 to-pink-50">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                       <Video className="w-5 h-5 mr-2 text-red-600" />
                       Áudio Original
                     </h2>
-                    <div className="aspect-video w-full rounded-lg overflow-hidden">
-                      <iframe
-<<<<<<< HEAD
-                        src={`https://www.youtube.com/embed/${audio_original!.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || ''}`}
-=======
-                        src={`https://www.youtube.com/embed/${getYouTubeId(verse.audio_original)}`}
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
-                        className="w-full h-full"
-                        allowFullScreen
-                        title={`Áudio: ${displayData(titulo_original)}`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      />
+                    <div className="w-full rounded-lg overflow-hidden" style={{aspectRatio: '16/10'}}>
+                      {(() => {
+                        const youtubeId = getYouTubeId(verse.audio_original!);
+                        if (youtubeId) {
+                          return (
+                            <iframe
+                              src={`https://www.youtube.com/embed/${youtubeId}`}
+                              className="w-full h-full"
+                              allowFullScreen
+                              title={`Áudio: ${displayData(verse.titulo_original)}`}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            />
+                          );
+                        } else {
+                          return (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                              <p className="text-gray-600">URL de vídeo inválida</p>
+                            </div>
+                          );
+                        }
+                      })()}
                     </div>
                   </div>
                 </Card>
               ) : (
                 <Card className="overflow-hidden rounded-xl border-0 shadow-lg">
-                  <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className="p-3 bg-gradient-to-br from-gray-50 to-gray-100">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                       <Video className="w-5 h-5 mr-2 text-gray-600" />
                       Áudio Original
                     </h2>
-                    <div className="aspect-video w-full rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
-                      <p className="text-gray-600 text-center">Dados inconsistentes - Áudio não disponível</p>
+                    <div className="w-full rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center" style={{aspectRatio: '16/10'}}>
+                      <p className="text-gray-600 text-center">Áudio não disponível</p>
                     </div>
                   </div>
                 </Card>
               )}
 
+              {/* Seção Veja Também */}
+              {relatedVerses.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Veja Também</h3>
+                  <div className="space-y-2">
+                    {relatedVerses.map((relatedVerse) => (
+                      <button
+                        key={relatedVerse.id}
+                        onClick={() => navigate(`/verse/${relatedVerse.id}`)}
+                        className="block w-full text-left p-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all duration-200"
+                      >
+                        <span className="text-primary font-medium hover:underline">
+                          {displayData(relatedVerse.titulo_pt_br || relatedVerse.titulo_original, 'Título não disponível')}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Ações */}
               <div className="space-y-4">
-                {/* Preço e Botão de Adicionar */}
-                <div className="space-y-4">
-                  {/* Preço em destaque */}
-                  {isValidData(valor) && valor! > 0 ? (
-                    <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-purple-100 rounded-xl">
-                      <p className="text-sm text-gray-600 mb-1">Preço</p>
-                      <p className="text-3xl font-bold text-primary">
-                        R$ {(valor! / 100).toFixed(2).replace('.', ',')} {/* Converter de centavos para reais */}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center p-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl">
-                      <p className="text-sm text-gray-600 mb-1">Preço</p>
-                      <p className="text-lg text-gray-600">
-                        Dados inconsistentes
-                      </p>
-                    </div>
+                {/* Botão de adicionar ao carrinho */}
+                <Button
+                  onClick={handleAddToCart}
+                  className="w-full bg-primary hover:bg-primary/90 rounded-full transition-all duration-200 py-3 text-lg font-semibold"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Adicionar ao Carrinho
+                  {isValidData(verse.valor) && verse.valor! > 0 && (
+                    <span className="ml-2 text-primary-foreground/80">
+                      • R$ {(verse.valor! / 100).toFixed(2).replace('.', ',')}
+                    </span>
                   )}
-                  
-                  {/* Botão de adicionar ao carrinho */}
-                  <Button
-                    onClick={handleAddToCart}
-                    className="w-full bg-primary hover:bg-primary/90 rounded-full transition-all duration-200 py-3 text-lg font-semibold"
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Adicionar ao Carrinho
-                    {isValidData(valor) && valor! > 0 && (
-                      <span className="ml-2 text-primary-foreground/80">
-                        • R$ {(valor! / 100).toFixed(2).replace('.', ',')} {/* Converter de centavos para reais */}
-                      </span>
-                    )}
-                  </Button>
-                </div>
+                </Button>
                 
                 {/* Botões de Ação Secundários */}
                 <div className="flex gap-3 justify-center">
@@ -305,34 +308,30 @@ const VerseDetails = () => {
               {/* Cabeçalho */}
               <div>
                 <span className="inline-block px-3 py-1 text-sm font-medium text-primary bg-primary/10 rounded-full mb-3">
-<<<<<<< HEAD
-                  {displayData(estilo?.[0], 'Estilo não definido')}
-=======
-                  {verse.estilo?.[0] || 'Musical'}
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
+                  {displayData(verse.estilo?.[0], 'Estilo não definido')}
                 </span>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{displayData(titulo_original)}</h1>
-                <p className="text-xl text-gray-600 mb-4">{displayData(musical)}</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  {displayData(verse.titulo_original || verse.titulo_pt_br, 'Título')}
+                </h1>
+                <p className="text-xl text-gray-600 mb-4">{displayData(verse.musical, 'Musical')}</p>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>{(visualizacoes || 0).toLocaleString()} visualizações</span>
+                  <span>{(verse.visualizacoes || 0).toLocaleString()} visualizações</span>
                   <span>•</span>
-<<<<<<< HEAD
-                  <span>{versionado_em ? new Date(versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
-=======
-                  <span>{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não informada'}</span>
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
+                  <span>{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
                 </div>
               </div>
 
               {/* Título Traduzido */}
-              <Card className="p-6 border-0 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                  <Type className="w-5 h-5 mr-2 text-blue-600" />
-                  Título em Português
-                </h2>
-                <p className="text-2xl font-bold text-blue-900">{displayData(titulo_pt_br)}</p>
-                <p className="text-sm text-gray-600 mt-2">Tradução brasileira do título original</p>
-              </Card>
+              {isValidData(verse.titulo_pt_br) && (
+                <Card className="p-6 border-0 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                    <Type className="w-5 h-5 mr-2 text-blue-600" />
+                    Título em Português
+                  </h2>
+                  <p className="text-2xl font-bold text-blue-900">{displayData(verse.titulo_pt_br)}</p>
+                  <p className="text-sm text-gray-600 mt-2">Tradução brasileira do título original</p>
+                </Card>
+              )}
 
               {/* Informações do Musical */}
               <Card className="p-6 border-0 bg-gradient-to-r from-primary/5 to-purple-50 rounded-xl">
@@ -343,125 +342,66 @@ const VerseDetails = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm font-medium text-gray-600">Origem:</span>
-<<<<<<< HEAD
-                    <p className="text-gray-900 font-medium">{displayData(musical)}</p>
+                    <p className="text-gray-900 font-medium">{displayData(verse.musical)}</p>
                   </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Música de:</span>
-                    <p className="text-gray-900 font-medium">{displayData(compositor)}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Letra Original de:</span>
-                    <p className="text-gray-900">{displayData(letrista)}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Versão brasileira de:</span>
-                    <p className="text-gray-900">{displayData(versionista)}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Texto revisado por:</span>
-                    <p className="text-gray-900">{displayData(revisao)}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Versionado em:</span>
-                    <p className="text-gray-900">{versionado_em ? new Date(versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</p>
-=======
-                    <p className="text-gray-900 font-medium">{verse.origem || 'Não informado'}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Música de:</span>
-                    <p className="text-gray-900 font-medium">{verse.compositor?.[0] || 'Não informado'}</p>
-                  </div>
-                  {verse.letra_original && (
+                  {isValidData(verse.compositor) && (
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Letra Original:</span>
-                      <p className="text-gray-900">{verse.letra_original}</p>
+                      <span className="text-sm font-medium text-gray-600">Música de:</span>
+                      <p className="text-gray-900 font-medium">{displayData(verse.compositor)}</p>
                     </div>
                   )}
-                  {verse.letrista?.[0] && (
+                  {isValidData(verse.letrista) && (
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Letra original de:</span>
-                      <p className="text-gray-900">{verse.letrista[0]}</p>
+                      <span className="text-sm font-medium text-gray-600">Letra Original de:</span>
+                      <p className="text-gray-900">{displayData(verse.letrista)}</p>
                     </div>
                   )}
-                  {verse.versionista?.[0] && (
+                  {isValidData(verse.versionista) && (
                     <div>
                       <span className="text-sm font-medium text-gray-600">Versão brasileira de:</span>
-                      <p className="text-gray-900">{verse.versionista[0]}</p>
+                      <p className="text-gray-900">{displayData(verse.versionista)}</p>
                     </div>
                   )}
-                  {verse.revisao?.[0] && (
+                  {isValidData(verse.revisao) && (
                     <div>
                       <span className="text-sm font-medium text-gray-600">Texto revisado por:</span>
-                      <p className="text-gray-900">{verse.revisao[0]}</p>
+                      <p className="text-gray-900">{displayData(verse.revisao)}</p>
                     </div>
                   )}
                   <div>
                     <span className="text-sm font-medium text-gray-600">Versionado em:</span>
-                    <p className="text-gray-900">{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não informada'}</p>
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
+                    <p className="text-gray-900">{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</p>
                   </div>
                 </div>
               </Card>
 
-<<<<<<< HEAD
               {/* Informações Adicionais */}
-              {isValidData(versao_brasileira) && (
+              {isValidData(verse.versao_brasileira) && (
                 <Card className="p-6 border-0 bg-gray-50 rounded-xl">
                   <h2 className="text-lg font-semibold text-gray-900 mb-3">Versão Brasileira</h2>
-                  <p className="text-gray-700 leading-relaxed">{displayData(versao_brasileira)}</p>
+                  <p className="text-gray-700 leading-relaxed">{displayData(verse.versao_brasileira)}</p>
                 </Card>
               )}
 
-=======
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
               {/* Conteúdo Formatado */}
-              <Card className="p-6 border-0 bg-gradient-to-br from-primary/5 to-purple-50 rounded-xl">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Conteúdo</h2>
-                {isValidData(conteudo) ? (
+              {isValidData(verse.conteudo) && (
+                <Card className="p-6 border-0 bg-gradient-to-br from-primary/5 to-purple-50 rounded-xl">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Conteúdo</h2>
                   <div 
                     className="prose prose-gray max-w-none"
-                    dangerouslySetInnerHTML={{ __html: conteudo! }}
+                    dangerouslySetInnerHTML={{ __html: verse.conteudo! }}
                     style={{
                       fontSize: '16px',
                       lineHeight: '1.6',
                       color: '#374151'
                     }}
                   />
-                ) : (
-                  <p className="text-gray-600 italic">Dados inconsistentes - Conteúdo não disponível</p>
-                )}
-              </Card>
+                </Card>
+              )}
             </div>
           </div>
 
-          {/* Versos Relacionados */}
-          <section className="mt-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Versos Relacionados</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((item) => (
-                <Card key={item} className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 hover-scale bg-white">
-                  <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-purple-100">
-                      <Music className="w-8 h-8 text-primary/60" />
-                    </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-                  </div>
-                  <div className="p-4">
-                    <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full mb-2">
-                      Gospel
-                    </span>
-                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">Verso Relacionado {item}</h3>
-                    <p className="text-sm text-gray-600 mb-3">Artista {item}</p>
-                    <Button className="w-full bg-primary hover:bg-primary/90 rounded-full transition-all duration-200 text-sm py-2">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
+
         </main>
 
         <Footer />

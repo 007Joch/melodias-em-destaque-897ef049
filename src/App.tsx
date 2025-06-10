@@ -13,18 +13,18 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
 const ManageVerses = lazy(() => import("./pages/ManageVerses"));
+const ManageUsers = lazy(() => import("./pages/ManageUsers"));
 const CreateVerse = lazy(() => import("./pages/CreateVerse"));
 const EditVerse = lazy(() => import("./pages/EditVerse"));
 const VerseDetails = lazy(() => import("./pages/VerseDetails"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Configuração do QueryClient com cache otimizado
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos
-      gcTime: 10 * 60 * 1000, // 10 minutos
-      refetchOnWindowFocus: false,
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnWindowFocus: true,
       retry: 1,
     },
   },
@@ -43,6 +43,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/manage-verses" element={<ManageVerses />} />
+                <Route path="/manage-users" element={<ManageUsers />} />
                 <Route path="/create-verse" element={<CreateVerse />} />
                 <Route path="/edit-verse/:id" element={<EditVerse />} />
                 <Route path="/verse/:id" element={<VerseDetails />} />

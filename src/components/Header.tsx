@@ -1,11 +1,10 @@
-
 import React from "react";
 import { Search, User, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
-import { useAuth } from "@/hooks/useAuthHook";
+import { useAuth } from "@/hooks/useAuth";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import CartDrawer from "./CartDrawer";
@@ -88,7 +87,7 @@ const Header = () => {
           <div className="flex items-center justify-between gap-4">
             {/* Menu Hambúrguer */}
             <div className="flex items-center space-x-4">
-              {user && <MobileMenu />}
+              <MobileMenu />
               
               {/* Logo - Aumentado ainda mais */}
               <div className="flex items-center space-x-2 flex-shrink-0 max-h-32 overflow-hidden">
@@ -210,3 +209,4 @@ const Header = () => {
 };
 
 export default Header;
+export { Header };

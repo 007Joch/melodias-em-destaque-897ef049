@@ -101,7 +101,7 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
               <Separator className="my-4" />
 
               {/* Resumo do pedido */}
-              <div className="mb-4">
+              <div>
                 <h3 className="font-medium text-gray-900 mb-3">Resumo do pedido</h3>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-600">Subtotal</span>
@@ -114,17 +114,17 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
               </div>
 
               {/* Ações do carrinho */}
-              <div className="space-y-3">
+              <div className="space-y-3 pb-10 px-2">
                 <Button
                   variant="outline"
                   onClick={clearCart}
-                  className="w-full rounded-full"
+                  className="w-full rounded-full py-3 text-sm font-medium"
                 >
                   Limpar Carrinho
                 </Button>
                 
                 <Button
-                  className="w-full bg-primary hover:bg-primary/90 rounded-full"
+                  className="w-full bg-primary hover:bg-primary/90 rounded-full py-3 text-sm font-medium"
                   onClick={() => {
                     // Aqui você pode implementar a lógica de finalização do pedido
                     console.log('Finalizando pedido...', items);

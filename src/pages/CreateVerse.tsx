@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Save, Eye, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Save, Eye, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2, Plus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -11,8 +11,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { createVerse, VerseFormData } from '../services/versesService';
+import { createVerse, VerseFormData, searchVersesByTitle, Verse } from '../services/versesService';
 import { toast } from '@/components/ui/sonner';
+import PriceInput from '@/components/PriceInput';
 
 const CreateVerse = () => {
   const navigate = useNavigate();
@@ -31,7 +32,8 @@ const CreateVerse = () => {
     audioOriginal: '',
     imageUrl: '',
     imageFile: undefined,
-    valor: 0
+    valor: 0,
+    versoes_irmas: []
   });
 
   const [isPreview, setIsPreview] = useState(false);
@@ -39,8 +41,25 @@ const CreateVerse = () => {
   const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
   const [isLoading, setIsLoading] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
+  
+  // Estados para busca de versões irmãs
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<Verse[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [selectedVerses, setSelectedVerses] = useState<Verse[]>([]);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const categories = ['Gospel', 'Louvor', 'Adoração', 'Contemporâneo', 'Teatro Musical', 'Clássico'];
+
+  // Cleanup do timeout quando componente for desmontado
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, []);
 
   // Configuração do editor rich text
   const quillModules = {
@@ -64,22 +83,11 @@ const CreateVerse = () => {
     'link'
   ];
 
-  const handleInputChange = (field: keyof VerseFormData, value: string) => {
-    // Tratamento especial para o campo valor (aceitar vírgula e ponto)
-    if (field === 'valor') {
-      // Substituir vírgula por ponto e converter para número
-      const normalizedValue = value.replace(',', '.');
-      const numericValue = parseFloat(normalizedValue) || 0;
-      setFormData(prev => ({
-        ...prev,
-        [field]: numericValue
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+  const handleInputChange = (field: keyof VerseFormData, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,14 +117,78 @@ const CreateVerse = () => {
     }
   };
 
+  // Funções para versões irmãs
+  const handleSearchVerses = async (term: string) => {
+    if (term.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchResults([]); // Limpa resultados anteriores
+    
+    try {
+      console.log(`🔍 Iniciando busca por: "${term}"`);
+      const results = await searchVersesByTitle(term);
+      
+      // Verifica se ainda é a busca atual (evita race conditions)
+      if (searchTerm === term) {
+        setSearchResults(results);
+        console.log(`✅ Busca concluída: ${results.length} resultados`);
+      } else {
+        console.log('🚫 Busca cancelada - termo de busca mudou');
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar versos:', error);
+      if (searchTerm === term) {
+        setSearchResults([]);
+        toast.error(`Erro na busca: ${error.message || 'Erro desconhecido'}`);
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const addRelatedVerse = (verse: Verse) => {
+    if (selectedVerses.length >= 10) {
+      toast.error('Máximo de 10 versões irmãs permitidas');
+      return;
+    }
+
+    if (selectedVerses.find(v => v.id === verse.id)) {
+      toast.error('Esta versão já foi adicionada');
+      return;
+    }
+
+    const newSelectedVerses = [...selectedVerses, verse];
+    setSelectedVerses(newSelectedVerses);
+    setFormData(prev => ({
+      ...prev,
+      versoes_irmas: newSelectedVerses.map(v => v.id)
+    }));
+    setSearchTerm('');
+    setSearchResults([]);
+    setShowSearch(false);
+  };
+
+  const removeRelatedVerse = (verseId: number) => {
+    const newSelectedVerses = selectedVerses.filter(v => v.id !== verseId);
+    setSelectedVerses(newSelectedVerses);
+    setFormData(prev => ({
+      ...prev,
+      versoes_irmas: newSelectedVerses.map(v => v.id)
+    }));
+  };
+
   const extractYouTubeId = (url: string): string | null => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
-  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
     const now = Date.now();
     
@@ -151,25 +223,6 @@ const CreateVerse = () => {
         toast.success('Verso criado com sucesso!');
         // Resetar o formulário
         setFormData({
-<<<<<<< HEAD
-      compositor: '',
-      letraOriginal: '',
-      letrista: '',
-      versionista: '',
-      revisao: '',
-      versionadoEm: new Date().toISOString().split('T')[0],
-      titulo_pt_br: '',
-      titulo_original: '',
-      musical: '',
-      estilo: '',
-      conteudo: '',
-      audioOriginal: '',
-      imageUrl: '',
-      imageFile: undefined,
-      valor: 0
-    });
-=======
-          origem: '',
           compositor: '',
           letraOriginal: '',
           letrista: '',
@@ -177,16 +230,20 @@ const CreateVerse = () => {
           revisao: '',
           versionadoEm: new Date().toISOString().split('T')[0],
           titulo_pt_br: '',
+          titulo_original: '',
           musical: '',
           estilo: '',
-          descricao: '',
           conteudo: '',
-          youtubeUrl: '',
+          audioOriginal: '',
           imageUrl: '',
           imageFile: undefined,
-          valor: 0
+          valor: 0,
+          versoes_irmas: []
         });
->>>>>>> abd277ab6c88590b3fcb587a9672bcda1c8713d4
+        setSelectedVerses([]);
+        setSearchTerm('');
+        setSearchResults([]);
+        setShowSearch(false);
         setImagePreview('');
         // Navegar para a homepage para ver o novo verso
         setTimeout(() => {
@@ -214,10 +271,6 @@ const CreateVerse = () => {
     } finally {
       console.log('Finalizando submissão do formulário...');
       setIsLoading(false);
-      // Garantir que o estado seja limpo mesmo em caso de erro
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
     }
   };
 
@@ -247,38 +300,9 @@ const CreateVerse = () => {
                 <p className="text-gray-600">Cadastre um novo verso musical</p>
               </div>
             </div>
-            <div className="flex space-x-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handlePreview}
-                className="rounded-full"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Visualizar
-              </Button>
-              <Button 
-                type="button" 
-                onClick={handleSubmit}
-                className="bg-primary hover:bg-primary/90 rounded-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Salvar Verso
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
 
-          <form id="verse-form" className="space-y-8">
+          <form id="verse-form" className="space-y-8" onSubmit={handleSubmit}>
             {/* Informações do Musical */}
             <Card className="p-6 border-0 shadow-sm">
               <div className="flex items-center space-x-2 mb-6">
@@ -304,7 +328,7 @@ const CreateVerse = () => {
                 
                 <div>
                   <Label htmlFor="letraOriginal" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Letra Original
+                    Letra Original de
                   </Label>
                   <Input
                     id="letraOriginal"
@@ -452,9 +476,128 @@ const CreateVerse = () => {
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
                   />
-                  <div className="mt-1 text-xs text-gray-500">
-                    Insira o valor em reais (ex: 15.99 para R$ 15,99)
-                  </div>
+                </div>
+                
+                {/* Campo de Versões Irmãs */}
+                <div className="md:col-span-2">
+                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                    Versões Irmãs (máximo 10)
+                  </Label>
+                  
+                  {/* Versões selecionadas */}
+                  {selectedVerses.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex flex-wrap gap-2">
+                        {selectedVerses.map((verse) => (
+                          <div key={verse.id} className="flex items-center bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
+                            <span className="mr-2">{verse.titulo_original}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeRelatedVerse(verse.id)}
+                              className="hover:bg-primary/20 rounded-full p-1"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Botão para adicionar versão irmã */}
+                  {selectedVerses.length < 10 && (
+                    <div className="space-y-3">
+                      {!showSearch ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowSearch(true)}
+                          className="flex items-center space-x-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Adicionar Versão Irmã</span>
+                        </Button>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Campo de busca */}
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Search className="h-4 w-4 text-gray-400" />
+                            </div>
+                            <Input
+                              type="text"
+                              placeholder="Buscar por título original..."
+                              value={searchTerm}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setSearchTerm(value);
+                                
+                                // Limpa timeout anterior
+                                if (searchTimeout) {
+                                  clearTimeout(searchTimeout);
+                                }
+                                
+                                // Define novo timeout para debounce
+                                const newTimeout = setTimeout(() => {
+                                  handleSearchVerses(value);
+                                }, 500); // 500ms de debounce
+                                
+                                setSearchTimeout(newTimeout);
+                              }}
+                              className="pl-10 pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowSearch(false);
+                                setSearchTerm('');
+                                setSearchResults([]);
+                              }}
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            >
+                              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                            </button>
+                          </div>
+                          
+                          {/* Resultados da busca */}
+                          {isSearching && (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              <span className="text-sm text-gray-500">Buscando...</span>
+                            </div>
+                          )}
+                          
+                          {searchResults.length > 0 && (
+                            <div className="border rounded-lg max-h-48 overflow-y-auto">
+                              {searchResults.map((verse) => (
+                                <button
+                                  key={verse.id}
+                                  type="button"
+                                  onClick={() => addRelatedVerse(verse)}
+                                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-b-0 transition-colors"
+                                >
+                                  <div className="font-medium text-sm">{verse.titulo_original}</div>
+                                  <div className="text-xs text-gray-500">{verse.musical}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {searchTerm.length >= 2 && !isSearching && searchResults.length === 0 && (
+                            <div className="text-center py-4 text-sm text-gray-500">
+                              Nenhum verso encontrado
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {selectedVerses.length >= 10 && (
+                    <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      Limite máximo de 10 versões irmãs atingido
+                    </div>
+                  )}
                 </div>
                 
                 <div className="md:col-span-2">
@@ -659,6 +802,36 @@ const CreateVerse = () => {
                 </div>
               </div>
             </Card>
+            
+            {/* Botões de Ação */}
+            <div className="flex justify-end space-x-4 pt-6">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handlePreview}
+                className="rounded-full"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Visualizar
+              </Button>
+              <Button 
+                type="submit"
+                className="bg-primary hover:bg-primary/90 rounded-full"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Salvar Verso
+                  </>
+                )}
+              </Button>
+            </div>
           </form>
         </main>
 

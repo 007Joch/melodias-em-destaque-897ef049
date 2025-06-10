@@ -1,11 +1,12 @@
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import Layout from '../components/Layout';
+import { Layout } from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // Lazy loading dos componentes para melhor performance
 const HomePage = lazy(() => import('../components/HomePage'));
 const ManageVerses = lazy(() => import('../pages/ManageVerses'));
+const ManageUsers = lazy(() => import('../pages/ManageUsers'));
 const CreateVerse = lazy(() => import('../pages/CreateVerse'));
 const EditVerse = lazy(() => import('../pages/EditVerse'));
 const VerseDetails = lazy(() => import('../pages/VerseDetails'));
@@ -21,7 +22,7 @@ const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Layout><Outlet /></Layout>,
+    element: <Layout />,
     children: [
       {
         index: true,
@@ -32,10 +33,18 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'manage',
+        path: 'manage-verses',
         element: (
           <SuspenseWrapper>
             <ManageVerses />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'manage-users',
+        element: (
+          <SuspenseWrapper>
+            <ManageUsers />
           </SuspenseWrapper>
         ),
       },

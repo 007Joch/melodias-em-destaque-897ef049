@@ -97,7 +97,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                                 {exactMatch.visualizacoes || 0}
                               </span>
                               <span className="font-medium text-primary">
-                                {formatPrice(exactMatch.valor ? exactMatch.valor / 100 : 0)} {/* Converter de centavos para reais */}
+                                {formatPrice(exactMatch.valor || 0)} {/* Valor direto do banco */}
                               </span>
                             </div>
                           </div>
@@ -150,7 +150,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                                     {verse.visualizacoes || 0}
                                   </span>
                                   <span className="font-medium text-primary">
-                                    {formatPrice(verse.valor ? verse.valor / 100 : 0)} {/* Converter de centavos para reais */}
+                                    {formatPrice(verse.valor || 0)} {/* Valor direto do banco */}
                                   </span>
                                 </div>
                               </div>

@@ -33,6 +33,62 @@ type AllUsersRecord = {
 
 const ManageUsers = () => {
   const { user, profile, loading } = useAuth();
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [users, setUsers] = useState<AllUsersRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AllUsersRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [newRole, setNewRole] = useState('');
+
+  console.log('🔍 ManageUsers - Estado atual:', {
+    loading,
+    user: user?.email,
+    profile: profile?.role,
+    hasUser: !!user,
+    hasProfile: !!profile,
+    usersCount: users.length
+  });
+
+  // Função para carregar todos os usuários
+  const fetchAllUsers = async () => {
+    try {
+      setIsLoading(true);
+      
+      console.log('Iniciando busca de todos os usuários...');
+      
+      // Chamar a função RPC para buscar todos os usuários
+      const { data: allUsers, error } = await supabase
+        .rpc('get_all_users');
+
+      if (error) {
+        console.error('Erro ao buscar usuários:', error);
+        toast.error('Erro ao carregar usuários: ' + error.message);
+        return;
+      }
+
+      console.log('Usuários encontrados:', allUsers?.length || 0, allUsers);
+      setUsers(allUsers || []);
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+      toast.error('Erro ao carregar usuários');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar usuários apenas uma vez quando o componente monta
+  useEffect(() => {
+    if (user && profile && profile.role === 'admin') {
+      fetchAllUsers();
+    }
+  }, [user, profile]);
 
   // Aguardar carregamento antes de verificar permissões
   if (loading) {
@@ -71,51 +127,6 @@ const ManageUsers = () => {
       </CartProvider>
     );
   }
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [users, setUsers] = useState<AllUsersRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<AllUsersRecord | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [newRole, setNewRole] = useState('');
-
-  // Carregar usuários
-  useEffect(() => {
-    fetchAllUsers();
-  }, []);
-
-  // Função para carregar todos os usuários
-  const fetchAllUsers = async () => {
-    try {
-      setIsLoading(true);
-      
-      console.log('Iniciando busca de todos os usuários...');
-      
-      // Chamar a função RPC para buscar todos os usuários
-      const { data: allUsers, error } = await supabase
-        .rpc('get_all_users');
-
-      if (error) {
-        console.error('Erro ao buscar usuários:', error);
-        toast.error('Erro ao carregar usuários: ' + error.message);
-        return;
-      }
-
-      console.log('Usuários encontrados:', allUsers?.length || 0, allUsers);
-      setUsers(allUsers || []);
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-      toast.error('Erro ao carregar usuários');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Filtrar usuários
   const filteredUsers = users.filter(user => {
@@ -175,9 +186,7 @@ const ManageUsers = () => {
         }
       }
 
-      // Nota: Não podemos deletar usuários da tabela auth.users diretamente
-      // mas podemos remover o perfil para "desativar" o usuário
-      
+      // Atualizar lista local
       setUsers(users.filter(u => u.id !== selectedUser.id));
       toast.success('Usuário removido do sistema com sucesso');
       setDeleteDialogOpen(false);
@@ -296,6 +305,7 @@ const ManageUsers = () => {
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Gerenciamento de Usuários</h1>
               <p className="text-gray-600">Gerencie todos os usuários, privilégios e permissões do sistema</p>
+              <p className="text-sm text-gray-500 mt-2">Total de usuários: {users.length}</p>
             </div>
 
             {/* Filtros */}
@@ -350,13 +360,14 @@ const ManageUsers = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Usuários Cadastrados</h2>
                   <Badge variant="outline" className="text-sm">
-                    {filteredUsers.length} usuário(s)
+                    {filteredUsers.length} usuário(s) filtrado(s)
                   </Badge>
                 </div>
 
                 {isLoading ? (
                   <div className="flex justify-center items-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="ml-3 text-gray-600">Carregando usuários...</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -421,10 +432,13 @@ const ManageUsers = () => {
                       </TableBody>
                     </Table>
                     
-                    {filteredUsers.length === 0 && (
+                    {filteredUsers.length === 0 && !isLoading && (
                       <div className="text-center py-12">
                         <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500">Nenhum usuário encontrado</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          {users.length === 0 ? 'Não há usuários cadastrados' : 'Tente ajustar os filtros de busca'}
+                        </p>
                       </div>
                     )}
                   </div>

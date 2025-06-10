@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 
 // Configuração do cliente Supabase com as credenciais fornecidas pelo usuário
@@ -14,8 +15,6 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     // Configurações para máxima persistência
     storage: window.localStorage,
     storageKey: 'sb-hlrcvvaneofcpncbqjyg-auth-token',
-    // Sem timeout de sessão
-    sessionRefreshMargin: 60, // Renovar 60 segundos antes de expirar
   },
   global: {
     headers: {

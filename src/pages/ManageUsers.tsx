@@ -103,7 +103,7 @@ const ManageUsers = () => {
 
       if (error) {
         console.error('Erro ao buscar usuários:', error);
-        toast.error('Erro ao carregar usuários');
+        toast.error('Erro ao carregar usuários: ' + error.message);
         return;
       }
 
@@ -170,6 +170,8 @@ const ManageUsers = () => {
 
         if (profileError) {
           console.error('Erro ao deletar perfil:', profileError);
+          toast.error('Erro ao deletar perfil: ' + profileError.message);
+          return;
         }
       }
 

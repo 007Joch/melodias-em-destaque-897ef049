@@ -11,24 +11,33 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          cpf: string | null
           created_at: string | null
+          endereco: Json | null
           id: string
           name: string
           role: string | null
+          telefone: string | null
           updated_at: string | null
         }
         Insert: {
+          cpf?: string | null
           created_at?: string | null
+          endereco?: Json | null
           id: string
           name: string
           role?: string | null
+          telefone?: string | null
           updated_at?: string | null
         }
         Update: {
+          cpf?: string | null
           created_at?: string | null
+          endereco?: Json | null
           id?: string
           name?: string
           role?: string | null
+          telefone?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -398,7 +407,50 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_basic_profile: {
+        Args: { user_id: string; user_name: string }
+        Returns: {
+          cpf: string | null
+          created_at: string | null
+          endereco: Json | null
+          id: string
+          name: string
+          role: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+      }
+      get_all_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          email_confirmed_at: string
+          created_at: string
+          updated_at: string
+          last_sign_in_at: string
+          raw_user_meta_data: Json
+          profile_name: string
+          profile_role: string
+          profile_cpf: string
+          profile_telefone: string
+          profile_endereco: Json
+          profile_created_at: string
+        }[]
+      }
+      get_user_profile: {
+        Args: { user_id: string }
+        Returns: {
+          cpf: string | null
+          created_at: string | null
+          endereco: Json | null
+          id: string
+          name: string
+          role: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+      }
     }
     Enums: {
       [_ in never]: never

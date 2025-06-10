@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Edit, Trash2, Eye, User, Shield, UserCheck, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Edit, Trash2, Eye, User, Shield, UserCheck, AlertTriangle, Mail, MailCheck, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -14,16 +15,20 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type UserProfile = {
+type AllUsersRecord = {
   id: string;
-  name: string | null;
-  cpf: string | null;
-  telefone: string | null;
-  endereco: any;
-  role: string | null;
+  email: string;
+  email_confirmed_at: string | null;
   created_at: string;
   updated_at: string;
-  email?: string;
+  last_sign_in_at: string | null;
+  raw_user_meta_data: any;
+  profile_name: string | null;
+  profile_role: string | null;
+  profile_cpf: string | null;
+  profile_telefone: string | null;
+  profile_endereco: any;
+  profile_created_at: string | null;
 };
 
 const ManageUsers = () => {
@@ -69,76 +74,41 @@ const ManageUsers = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [users, setUsers] = useState<AllUsersRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AllUsersRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [newRole, setNewRole] = useState('');
 
   // Carregar usuários
   useEffect(() => {
-    // Se chegou aqui, é admin - pode carregar os usuários
-    fetchUsers();
-  }, [profile]);
+    fetchAllUsers();
+  }, []);
 
-  // Função para carregar usuários
-  const fetchUsers = async () => {
+  // Função para carregar todos os usuários
+  const fetchAllUsers = async () => {
     try {
       setIsLoading(true);
       
-      console.log('Iniciando busca de usuários...');
+      console.log('Iniciando busca de todos os usuários...');
       
-      // Buscar perfis com JOIN para incluir email da tabela auth.users
-      console.log('Buscando usuários com email...');
-      let { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          name,
-          cpf,
-          telefone,
-          endereco,
-          role,
-          created_at,
-          updated_at
-        `)
-        .order('created_at', { ascending: false });
+      // Chamar a função RPC para buscar todos os usuários
+      const { data: allUsers, error } = await supabase
+        .rpc('get_all_users');
 
-      console.log('Perfis encontrados:', profiles?.length || 0, profiles);
-      
-      if (profilesError) {
-        console.error('Erro ao buscar perfis:', profilesError);
+      if (error) {
+        console.error('Erro ao buscar usuários:', error);
         toast.error('Erro ao carregar usuários');
         return;
       }
-      
-      // Buscar emails dos usuários da tabela auth.users
-      const { data: authUsers, error: authError } = await supabase
-        .from('auth.users')
-        .select('id, email');
-        
-      console.log('Emails encontrados:', authUsers?.length || 0, authUsers);
-      
-      if (authError) {
-        console.error('Erro ao buscar emails:', authError);
-      }
 
-      // Combinar dados dos perfis com emails
-      const usersData = (profiles || []).map(profile => {
-        const authUser = authUsers?.find(user => user.id === profile.id);
-        return {
-          ...profile,
-          email: authUser?.email || 'Email não encontrado'
-        };
-      });
-
-      console.log('Usuários mapeados com email:', usersData.length, usersData);
-
-      setUsers(usersData);
+      console.log('Usuários encontrados:', allUsers?.length || 0, allUsers);
+      setUsers(allUsers || []);
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
       toast.error('Erro ao carregar usuários');
@@ -150,27 +120,38 @@ const ManageUsers = () => {
   // Filtrar usuários
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.profile_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.cpf || '').includes(searchTerm);
+      (user.profile_cpf || '').includes(searchTerm);
     
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    const matchesRole = selectedRole === 'all' || user.profile_role === selectedRole;
     
-    return matchesSearch && matchesRole;
+    let matchesStatus = true;
+    if (selectedStatus === 'confirmed') {
+      matchesStatus = !!user.email_confirmed_at;
+    } else if (selectedStatus === 'unconfirmed') {
+      matchesStatus = !user.email_confirmed_at;
+    } else if (selectedStatus === 'with_profile') {
+      matchesStatus = !!user.profile_name;
+    } else if (selectedStatus === 'without_profile') {
+      matchesStatus = !user.profile_name;
+    }
+    
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const handleView = (user: UserProfile) => {
+  const handleView = (user: AllUsersRecord) => {
     setSelectedUser(user);
     setViewDialogOpen(true);
   };
 
-  const handleEdit = (user: UserProfile) => {
+  const handleEdit = (user: AllUsersRecord) => {
     setSelectedUser(user);
-    setNewRole(user.role || 'cliente');
+    setNewRole(user.profile_role || 'cliente');
     setEditDialogOpen(true);
   };
 
-  const handleDelete = (user: UserProfile) => {
+  const handleDelete = (user: AllUsersRecord) => {
     setSelectedUser(user);
     setDeleteDialogOpen(true);
   };
@@ -180,16 +161,21 @@ const ManageUsers = () => {
     
     setIsDeleting(true);
     try {
-      // Deletar perfil (o usuário auth será mantido por questões de segurança)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', selectedUser.id);
+      // Deletar perfil se existir
+      if (selectedUser.profile_name) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', selectedUser.id);
 
-      if (profileError) {
-        throw profileError;
+        if (profileError) {
+          console.error('Erro ao deletar perfil:', profileError);
+        }
       }
 
+      // Nota: Não podemos deletar usuários da tabela auth.users diretamente
+      // mas podemos remover o perfil para "desativar" o usuário
+      
       setUsers(users.filter(u => u.id !== selectedUser.id));
       toast.success('Usuário removido do sistema com sucesso');
       setDeleteDialogOpen(false);
@@ -207,18 +193,35 @@ const ManageUsers = () => {
     
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', selectedUser.id);
+      // Se não tem perfil, criar um
+      if (!selectedUser.profile_name) {
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: selectedUser.id,
+            name: selectedUser.raw_user_meta_data?.name || 'Usuário',
+            role: newRole
+          });
 
-      if (error) {
-        throw error;
+        if (insertError) {
+          throw insertError;
+        }
+      } else {
+        // Atualizar perfil existente
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ role: newRole })
+          .eq('id', selectedUser.id);
+
+        if (updateError) {
+          throw updateError;
+        }
       }
 
+      // Atualizar estado local
       setUsers(users.map(u => 
         u.id === selectedUser.id 
-          ? { ...u, role: newRole }
+          ? { ...u, profile_role: newRole, profile_name: u.profile_name || 'Usuário' }
           : u
       ));
       
@@ -242,11 +245,24 @@ const ManageUsers = () => {
       case 'cliente':
         return <Badge variant="outline"><User className="w-3 h-3 mr-1" />Cliente</Badge>;
       default:
-        return <Badge variant="outline">Não definido</Badge>;
+        return <Badge variant="outline" className="bg-gray-100">Sem perfil</Badge>;
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const getStatusBadge = (emailConfirmedAt: string | null, lastSignInAt: string | null) => {
+    if (emailConfirmedAt) {
+      if (lastSignInAt) {
+        return <Badge variant="secondary" className="bg-green-500 text-white"><MailCheck className="w-3 h-3 mr-1" />Ativo</Badge>;
+      } else {
+        return <Badge variant="outline" className="bg-yellow-500 text-white"><Mail className="w-3 h-3 mr-1" />Confirmado</Badge>;
+      }
+    } else {
+      return <Badge variant="outline" className="bg-orange-500 text-white"><Clock className="w-3 h-3 mr-1" />Pendente</Badge>;
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Nunca';
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -267,11 +283,6 @@ const ManageUsers = () => {
     }
   };
 
-  // Remover verificação de role para permitir visualização durante testes
-  console.log('Profile atual:', profile);
-  console.log('Usuários no estado:', users);
-  console.log('Usuários filtrados:', filteredUsers);
-
   return (
     <CartProvider>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -282,7 +293,7 @@ const ManageUsers = () => {
             {/* Cabeçalho */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Gerenciamento de Usuários</h1>
-              <p className="text-gray-600">Gerencie usuários, privilégios e permissões do sistema</p>
+              <p className="text-gray-600">Gerencie todos os usuários, privilégios e permissões do sistema</p>
             </div>
 
             {/* Filtros */}
@@ -313,6 +324,20 @@ const ManageUsers = () => {
                       <SelectItem value="cliente">Cliente</SelectItem>
                     </SelectContent>
                   </Select>
+
+                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                    <SelectTrigger className="w-48">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Filtrar por status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os status</SelectItem>
+                      <SelectItem value="confirmed">Email confirmado</SelectItem>
+                      <SelectItem value="unconfirmed">Email pendente</SelectItem>
+                      <SelectItem value="with_profile">Com perfil</SelectItem>
+                      <SelectItem value="without_profile">Sem perfil</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </Card>
@@ -336,11 +361,10 @@ const ManageUsers = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>CPF</TableHead>
-                          <TableHead>Telefone</TableHead>
+                          <TableHead>Nome/Email</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead>Privilégio</TableHead>
+                          <TableHead>Último acesso</TableHead>
                           <TableHead>Cadastrado em</TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
@@ -348,13 +372,17 @@ const ManageUsers = () => {
                       <TableBody>
                         {filteredUsers.map((user) => (
                           <TableRow key={user.id}>
-                            <TableCell className="font-medium">
-                              {user.name || 'Nome não informado'}
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-medium">
+                                  {user.profile_name || 'Nome não informado'}
+                                </span>
+                                <span className="text-sm text-gray-500">{user.email}</span>
+                              </div>
                             </TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell>{user.cpf || 'Não informado'}</TableCell>
-                            <TableCell>{user.telefone || 'Não informado'}</TableCell>
-                            <TableCell>{getRoleBadge(user.role)}</TableCell>
+                            <TableCell>{getStatusBadge(user.email_confirmed_at, user.last_sign_in_at)}</TableCell>
+                            <TableCell>{getRoleBadge(user.profile_role)}</TableCell>
+                            <TableCell>{formatDate(user.last_sign_in_at)}</TableCell>
                             <TableCell>{formatDate(user.created_at)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
@@ -421,31 +449,39 @@ const ManageUsers = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Nome</label>
-                    <p className="text-gray-900">{selectedUser.name || 'Não informado'}</p>
+                    <p className="text-gray-900">{selectedUser.profile_name || 'Não informado'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Email</label>
                     <p className="text-gray-900">{selectedUser.email}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">CPF</label>
-                    <p className="text-gray-900">{selectedUser.cpf || 'Não informado'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Telefone</label>
-                    <p className="text-gray-900">{selectedUser.telefone || 'Não informado'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium text-gray-500">Endereço</label>
-                    <p className="text-gray-900">{formatAddress(selectedUser.endereco)}</p>
+                    <label className="text-sm font-medium text-gray-500">Status do Email</label>
+                    <div className="mt-1">{getStatusBadge(selectedUser.email_confirmed_at, selectedUser.last_sign_in_at)}</div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Privilégio</label>
-                    <div className="mt-1">{getRoleBadge(selectedUser.role)}</div>
+                    <div className="mt-1">{getRoleBadge(selectedUser.profile_role)}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">CPF</label>
+                    <p className="text-gray-900">{selectedUser.profile_cpf || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Telefone</label>
+                    <p className="text-gray-900">{selectedUser.profile_telefone || 'Não informado'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-sm font-medium text-gray-500">Endereço</label>
+                    <p className="text-gray-900">{formatAddress(selectedUser.profile_endereco)}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Cadastrado em</label>
                     <p className="text-gray-900">{formatDate(selectedUser.created_at)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Último acesso</label>
+                    <p className="text-gray-900">{formatDate(selectedUser.last_sign_in_at)}</p>
                   </div>
                 </div>
               </div>
@@ -465,7 +501,7 @@ const ManageUsers = () => {
             <DialogHeader>
               <DialogTitle>Editar Privilégios</DialogTitle>
               <DialogDescription>
-                Altere o nível de privilégio do usuário {selectedUser?.name}
+                Altere o nível de privilégio do usuário {selectedUser?.profile_name || selectedUser?.email}
               </DialogDescription>
             </DialogHeader>
             
@@ -507,8 +543,8 @@ const ManageUsers = () => {
                 Confirmar Exclusão
               </DialogTitle>
               <DialogDescription>
-                Tem certeza que deseja excluir o usuário <strong>{selectedUser?.name}</strong>?
-                Esta ação não pode ser desfeita e todos os dados do usuário serão permanentemente removidos.
+                Tem certeza que deseja excluir o usuário <strong>{selectedUser?.profile_name || selectedUser?.email}</strong>?
+                Esta ação removerá o perfil do usuário do sistema.
               </DialogDescription>
             </DialogHeader>
             

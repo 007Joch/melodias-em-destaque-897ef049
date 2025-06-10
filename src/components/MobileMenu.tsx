@@ -2,7 +2,11 @@
 import React, { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+<<<<<<< HEAD
 import { Menu, Home, Music, List, Users, LogOut, User } from "lucide-react";
+=======
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";

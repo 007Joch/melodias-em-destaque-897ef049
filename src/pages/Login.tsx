@@ -5,7 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import { ArrowLeft, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+=======
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
@@ -247,6 +251,7 @@ const Login = () => {
             <CardTitle className="text-2xl font-bold text-gray-900">
               {isSignUp ? "Criar conta" : "Entrar na sua conta"}
             </CardTitle>
+<<<<<<< HEAD
             {isSignUp && (
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
@@ -268,6 +273,8 @@ const Login = () => {
                 </div>
               </div>
             )}
+=======
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
           </CardHeader>
           
           <CardContent className="p-6">

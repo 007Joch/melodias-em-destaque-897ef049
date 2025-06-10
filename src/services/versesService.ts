@@ -135,6 +135,10 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('capas')
       .upload(uniqueFileName, resizedFile, {
+<<<<<<< HEAD
+=======
+        cacheControl: '3600',
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
         upsert: true,
         contentType: 'image/jpeg'
       });
@@ -234,8 +238,14 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 
     // Processar valor monetário corretamente
     const processedValue = processMonetaryValue(formData.valor);
+<<<<<<< HEAD
     
     console.log('💰 Valor processado:', { original: formData.valor, processed: processedValue });
+=======
+    const valueInCents = Math.round(processedValue * 100); // Converter para centavos
+    
+    console.log('💰 Valor processado:', { original: formData.valor, processed: processedValue, inCents: valueInCents });
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 
     // Usar o titulo_original fornecido ou o titulo_pt_br como fallback
     const tituloOriginal = formData.titulo_original || formData.titulo_pt_br;
@@ -256,7 +266,11 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
       
       // Informações do produto
       estilo: formData.estilo ? [formData.estilo] : null,
+<<<<<<< HEAD
       valor: processedValue, // Valor processado
+=======
+      valor: valueInCents, // Valor em centavos
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
       
       // Conteúdo e mídia
       conteudo: formData.conteudo || null,
@@ -274,7 +288,11 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 
     console.log('📝 Dados finais para inserção:', {
       ...verseData,
+<<<<<<< HEAD
       valor: `${processedValue} reais`,
+=======
+      valor: `${processedValue} reais (${valueInCents} centavos)`,
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
       url_imagem: imageUrl
     });
     
@@ -306,6 +324,7 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
   }
 };
 
+<<<<<<< HEAD
 // Função para buscar os últimos versos cadastrados (para seção "Adicionados Recentemente")
 export const getRecentVerses = async (limit: number = 3): Promise<any[]> => {
   try {
@@ -335,6 +354,8 @@ export const getRecentVerses = async (limit: number = 3): Promise<any[]> => {
   }
 };
 
+=======
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 // Função para buscar versos com paginação
 export const getVersesPaginated = async (page: number = 1, limit: number = 50): Promise<{ data: any[], total: number, hasMore: boolean }> => {
   try {
@@ -423,8 +444,13 @@ const processVerseData = (data: any[]) => {
       category = verso.estilo[0];
     }
     
+<<<<<<< HEAD
     // Usar valor direto do banco
     const priceInReais = verso.valor || 0;
+=======
+    // Converter valor de centavos para reais
+    const priceInReais = verso.valor ? verso.valor / 100 : 0;
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
     
     // Garantir que a URL da imagem seja válida
     let imageUrl = '/musical-generic.svg';
@@ -842,6 +868,7 @@ export const getVersesByArtist = async (musical: string): Promise<Verse[]> => {
     return [];
   }
 };
+<<<<<<< HEAD
 
 // Função para buscar versos por IDs (versões irmãs)
 export const getVersesByIds = async (ids: number[]): Promise<Verse[]> => {
@@ -890,6 +917,8 @@ export const searchVersesByTitle = async (searchTerm: string): Promise<Verse[]> 
     throw error;
   }
 };
+=======
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 
 // Função para buscar categorias únicas
 export const getCategories = async (): Promise<string[]> => {

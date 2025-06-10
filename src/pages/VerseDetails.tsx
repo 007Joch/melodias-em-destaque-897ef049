@@ -7,7 +7,11 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/hooks/useCart";
 import { CartProvider } from "@/hooks/useCart";
+<<<<<<< HEAD
 import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
+=======
+import { getVerse, incrementViews } from '../services/versesService';
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 import { Database } from '../integrations/supabase/types';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
@@ -97,6 +101,7 @@ const VerseDetails = () => {
           } catch (viewError) {
             console.warn('⚠️ Erro ao incrementar visualizações:', viewError);
           }
+<<<<<<< HEAD
           
           // Buscar versões irmãs se existirem
           if (data.versoes_irmas && data.versoes_irmas.length > 0) {
@@ -107,6 +112,8 @@ const VerseDetails = () => {
               console.error('Erro ao carregar versões irmãs:', err);
             }
           }
+=======
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
         } else {
           console.error('❌ Verso não encontrado para identificador:', identifier);
           setError('Verso não encontrado');
@@ -209,7 +216,11 @@ const VerseDetails = () => {
                       <Video className="w-5 h-5 mr-2 text-red-600" />
                       Áudio Original
                     </h2>
+<<<<<<< HEAD
                     <div className="w-full rounded-lg overflow-hidden" style={{aspectRatio: '16/10'}}>
+=======
+                    <div className="aspect-video w-full rounded-lg overflow-hidden">
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
                       {(() => {
                         const youtubeId = getYouTubeId(verse.audio_original!);
                         if (youtubeId) {
@@ -240,7 +251,11 @@ const VerseDetails = () => {
                       <Video className="w-5 h-5 mr-2 text-gray-600" />
                       Áudio Original
                     </h2>
+<<<<<<< HEAD
                     <div className="w-full rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center" style={{aspectRatio: '16/10'}}>
+=======
+                    <div className="aspect-video w-full rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
                       <p className="text-gray-600 text-center">Áudio não disponível</p>
                     </div>
                   </div>
@@ -269,6 +284,7 @@ const VerseDetails = () => {
 
               {/* Ações */}
               <div className="space-y-4">
+<<<<<<< HEAD
                 {/* Botão de adicionar ao carrinho */}
                 <Button
                   onClick={handleAddToCart}
@@ -282,6 +298,41 @@ const VerseDetails = () => {
                     </span>
                   )}
                 </Button>
+=======
+                {/* Preço e Botão de Adicionar */}
+                <div className="space-y-4">
+                  {/* Preço em destaque */}
+                  {isValidData(verse.valor) && verse.valor! > 0 ? (
+                    <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-purple-100 rounded-xl">
+                      <p className="text-sm text-gray-600 mb-1">Preço</p>
+                      <p className="text-3xl font-bold text-primary">
+                        R$ {(verse.valor! / 100).toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center p-4 bg-gradient-to-r from-green-100 to-emerald-200 rounded-xl">
+                      <p className="text-sm text-gray-600 mb-1">Preço</p>
+                      <p className="text-lg font-semibold text-green-700">
+                        Gratuito
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Botão de adicionar ao carrinho */}
+                  <Button
+                    onClick={handleAddToCart}
+                    className="w-full bg-primary hover:bg-primary/90 rounded-full transition-all duration-200 py-3 text-lg font-semibold"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Adicionar ao Carrinho
+                    {isValidData(verse.valor) && verse.valor! > 0 && (
+                      <span className="ml-2 text-primary-foreground/80">
+                        • R$ {(verse.valor! / 100).toFixed(2).replace('.', ',')}
+                      </span>
+                    )}
+                  </Button>
+                </div>
+>>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
                 
                 {/* Botões de Ação Secundários */}
                 <div className="flex gap-3 justify-center">

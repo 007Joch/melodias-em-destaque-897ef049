@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 import { createClient } from '@supabase/supabase-js';
-=======
-
-import { createClient } from "@supabase/supabase-js";
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
 
 // Configuração do cliente Supabase com as credenciais fornecidas pelo usuário
 const supabaseUrl = "https://hlrcvvaneofcpncbqjyg.supabase.co";
@@ -18,12 +13,6 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: true,
     flowType: "pkce",
     debug: false,
-<<<<<<< HEAD
-=======
-    // Configurações para máxima persistência
-    storage: window.localStorage,
-    storageKey: 'sb-hlrcvvaneofcpncbqjyg-auth-token',
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
   },
   db: {
     schema: 'public',
@@ -36,8 +25,4 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Log para debug
-<<<<<<< HEAD
 console.log('🔧 Supabase client configurado com configurações padrão para melhor compatibilidade de sessão');
-=======
-console.log('Supabase client configurado');
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f

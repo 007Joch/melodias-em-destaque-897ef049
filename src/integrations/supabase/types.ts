@@ -464,7 +464,6 @@ export type Database = {
           updated_at: string | null
         }
       }
-<<<<<<< HEAD
       get_all_profiles_admin: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -478,8 +477,6 @@ export type Database = {
           endereco: Json
         }[]
       }
-=======
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
       get_all_users: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -494,11 +491,7 @@ export type Database = {
           profile_role: string
           profile_cpf: string
           profile_telefone: string
-<<<<<<< HEAD
           profile_endereco: string
-=======
-          profile_endereco: Json
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
           profile_created_at: string
         }[]
       }

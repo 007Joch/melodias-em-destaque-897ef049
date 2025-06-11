@@ -3,17 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Download, Share2, Heart, Video, Loader2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-<<<<<<< HEAD
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
-=======
-
-import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
-import { hasAccessToVerse } from '../services/purchaseService';
-import { useAuth } from '@/hooks/useAuth';
->>>>>>> 8b8e92dd1b26ca571171b5996bb5251c69edb924
 import { Database } from '../integrations/supabase/types';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];

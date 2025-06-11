@@ -1,5 +1,84 @@
-import { supabase } from '../integrations/supabase/client';
-import { Database } from '../integrations/supabase/types';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
+
+type Verse = Database['public']['Tables']['versoes']['Row'];
+
+export const getVerses = async (
+  searchTerm?: string,
+  musicalFilter?: string,
+  styleFilter?: string,
+  difficultyFilter?: string,
+  sortBy?: string
+): Promise<Verse[]> => {
+  try {
+    console.log('Iniciando busca de versos com parâmetros:', {
+      searchTerm,
+      musicalFilter,
+      styleFilter,
+      difficultyFilter,
+      sortBy
+    });
+
+    let query = supabase
+      .from('versoes')
+      .select('*')
+      .eq('status', 'publicado');
+
+    // Aplicar filtros
+    if (searchTerm) {
+      query = query.or(
+        `titulo_pt_br.ilike.%${searchTerm}%,titulo_original.ilike.%${searchTerm}%,musical.ilike.%${searchTerm}%`
+      );
+    }
+
+    if (musicalFilter && musicalFilter !== 'all') {
+      query = query.eq('musical', musicalFilter);
+    }
+
+    if (styleFilter && styleFilter !== 'all') {
+      query = query.contains('estilo', [styleFilter]);
+    }
+
+    if (difficultyFilter && difficultyFilter !== 'all') {
+      const difficulty = parseInt(difficultyFilter);
+      query = query.eq('dificuldade', difficulty);
+    }
+
+    // Aplicar ordenação
+    switch (sortBy) {
+      case 'popular':
+        query = query.order('compras', { ascending: false });
+        break;
+      case 'recent':
+        query = query.order('criada_em', { ascending: false });
+        break;
+      case 'price_low':
+        query = query.order('valor', { ascending: true });
+        break;
+      case 'price_high':
+        query = query.order('valor', { ascending: false });
+        break;
+      case 'alphabetical':
+        query = query.order('titulo_pt_br', { ascending: true });
+        break;
+      default:
+        query = query.order('criada_em', { ascending: false });
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Erro na consulta de versos:', error);
+      throw error;
+    }
+
+    console.log(`Encontrados ${data?.length || 0} versos`);
+    return data || [];
+  } catch (error) {
+    console.error('Erro ao buscar versos:', error);
+    throw error;
+  }
+};
 
 export type Verse = Database['public']['Tables']['versoes']['Row'];
 type VerseInsert = Database['public']['Tables']['versoes']['Insert'];
@@ -607,7 +686,7 @@ export const searchVerses = async (searchTerm: string, limit: number = 10): Prom
     const { data: similarMatches, error: similarError } = await supabase
       .from('versoes')
       .select('*')
-      .or(`titulo_original.ilike."%${searchTermLower}%",titulo_pt_br.ilike."%${searchTermLower}%",musical.ilike."%${searchTermLower}%",compositor.ilike."%${searchTermLower}%",conteudo.ilike."%${searchTermLower}%"`)
+      .or(`titulo_original.ilike."%${searchTermLower}%,titulo_pt_br.ilike."%${searchTermLower}%,musical.ilike."%${searchTermLower}%,compositor.ilike."%${searchTermLower}%,conteudo.ilike."%${searchTermLower}%"`)
       .limit(limit)
       .order('visualizacoes', { ascending: false });
 

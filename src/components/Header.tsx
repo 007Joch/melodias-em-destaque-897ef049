@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, User, ShoppingCart, Package } from "lucide-react";
+import { Search, User, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -136,16 +136,6 @@ const Header = () => {
 
             {/* Menu do Usuário e Carrinho */}
             <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Meus Pedidos - Visível apenas para usuários logados */}
-              {user && (
-                <Link to="/meus-pedidos">
-                  <Button variant="ghost" size="sm" className="rounded-full">
-                    <Package className="w-5 h-5" />
-                    <span className="ml-2 hidden sm:inline">Meus Pedidos</span>
-                  </Button>
-                </Link>
-              )}
-              
               {/* Carrinho */}
               <Button 
                 variant="ghost" 

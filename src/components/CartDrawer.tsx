@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 import { Separator } from "@/components/ui/separator";
-import CheckoutFlow from "@/components/CheckoutFlow";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -14,32 +15,22 @@ interface CartDrawerProps {
 
 const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
   const { items, removeFromCart, updateQuantity, clearCart, getTotalItems, getTotalPrice } = useCart();
-  const [showCheckout, setShowCheckout] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
 
-  const handleCheckoutComplete = () => {
-    setShowCheckout(false);
-    onClose();
-  };
-
-  const handleBackToCart = () => {
-    setShowCheckout(false);
-  };
-
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl">
-        {!showCheckout ? (
-          <>
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5" />
-                Carrinho ({totalItems} {totalItems === 1 ? 'item' : 'itens'})
-              </SheetTitle>
-            </SheetHeader>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5" />
+            Carrinho ({totalItems} {totalItems === 1 ? 'item' : 'itens'})
+          </SheetTitle>
+        </SheetHeader>
 
-            <div className="flex flex-col h-full mt-6">
+        <div className="flex flex-col h-full mt-6">
           {items.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <ShoppingBag className="w-16 h-16 text-gray-300 mb-4" />
@@ -58,16 +49,16 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                     {item.image && (
                       <img
                         src={item.image}
-                        alt={item.title || 'Verso Musical'}
+                        alt={item.title}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 truncate">{item.title || 'Verso Musical'}</h4>
-                      <p className="text-sm text-gray-600">{item.artist || 'Artista'}</p>
+                      <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
+                      <p className="text-sm text-gray-600">{item.artist}</p>
                       <div className="flex justify-between items-center mt-1">
                         <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
-                          {item.category || 'Musical'}
+                          {item.category}
                         </span>
                         <span className="font-medium text-primary">
                           R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
@@ -139,23 +130,37 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                 
                 <Button
                   className="w-full bg-primary hover:bg-primary/90 rounded-full py-3 text-sm font-medium"
-                  onClick={() => setShowCheckout(true)}
+                  onClick={() => {
+                    if (!user) {
+                      toast({
+                        title: "Login necessário",
+                        description: "Faça login para finalizar sua compra",
+                        variant: "destructive",
+                      });
+                      navigate("/login");
+                      onClose();
+                      return;
+                    }
+                    
+                    if (items.length === 0) {
+                      toast({
+                        title: "Carrinho vazio",
+                        description: "Adicione itens ao carrinho antes de finalizar",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    
+                    navigate("/checkout/address");
+                    onClose();
+                  }}
                 >
                   Finalizar Pedido
                 </Button>
               </div>
             </>
           )}
-            </div>
-          </>
-        ) : (
-          <div className="h-full overflow-y-auto">
-            <CheckoutFlow 
-              onBack={handleBackToCart}
-              onComplete={handleCheckoutComplete}
-            />
-          </div>
-        )}
+        </div>
       </SheetContent>
     </Sheet>
   );

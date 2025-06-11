@@ -12,9 +12,6 @@ const ManageUsers = lazy(() => import('../pages/ManageUsers'));
 const CreateVerse = lazy(() => import('../pages/CreateVerse'));
 const EditVerse = lazy(() => import('../pages/EditVerse'));
 const VerseDetails = lazy(() => import('../pages/VerseDetails'));
-const PrePurchase = lazy(() => import('../pages/PrePurchase'));
-const MyOrders = lazy(() => import('../pages/MyOrders'));
-const NotFound = lazy(() => import('../pages/NotFound'));
 const MusicGrid = lazy(() => import('../components/MusicGrid'));
 
 // Wrapper para Suspense
@@ -94,44 +91,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'pre-purchase/:id',
-        element: (
-          <SuspenseWrapper>
-            <PrePurchase />
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: 'meus-pedidos',
-        element: (
-          <ProtectedRoute requireAuth={true}>
-            <SuspenseWrapper>
-              <MyOrders />
-            </SuspenseWrapper>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'verse/:id',
-        element: (
-          <SuspenseWrapper>
-            <VerseDetails />
-          </SuspenseWrapper>
-        ),
-      },
-      {
         path: ':slug',
         element: (
           <SuspenseWrapper>
             <VerseDetails />
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: '*',
-        element: (
-          <SuspenseWrapper>
-            <NotFound />
           </SuspenseWrapper>
         ),
       },

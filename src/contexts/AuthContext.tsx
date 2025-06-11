@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Tentar obter informações do usuário para criar o perfil
           const { data: { user } } = await supabase.auth.getUser();
-          const userName = user?.raw_user_meta_data?.name || user?.email?.split('@')[0] || 'Usuário';
+          const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário';
           
           try {
             const newProfile = await createBasicProfile(userId, userName);
@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Criar perfil básico local sem tentar salvar no banco
                 const basicProfile = {
                   id: session.user.id,
-                  name: session.user.raw_user_meta_data?.name || session.user.email?.split('@')[0] || 'Usuário',
+                  name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
                   role: 'cliente',
                   created_at: new Date().toISOString()
                 };
@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('⚠️ Erro ao carregar perfil, usando fallback');
               const fallbackProfile = {
                 id: session.user.id,
-                name: session.user.raw_user_meta_data?.name || session.user.email?.split('@')[0] || 'Usuário',
+                name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
                 role: 'cliente',
                 created_at: new Date().toISOString()
               };
@@ -272,7 +272,7 @@ const signIn = async (email: string, password: string) => {
         console.log('⚠️ Perfil não encontrado, tentando criar...');
         
         try {
-          const userName = result.data.session.user.raw_user_meta_data?.name || 
+          const userName = result.data.session.user.user_metadata?.name || 
                           result.data.session.user.email?.split('@')[0] || 
                           'Usuário';
           
@@ -295,16 +295,7 @@ const signIn = async (email: string, password: string) => {
 
 const signUp = async (email: string, password: string, name: string, userData?: any) => {
   try {
-    console.log("🔍 Dados recebidos no signUp:", { email, name, userData });
-    
-    // Verificar se userData tem os campos necessários
-    if (userData) {
-      console.log("📋 Detalhes do userData:", {
-        cpf: userData.cpf,
-        telefone: userData.telefone,
-        endereco: userData.endereco
-      });
-    }
+    console.log("Dados recebidos no signUp:", { email, name, userData });
     
     // Simplificando o processo de cadastro
     const result = await supabase.auth.signUp({
@@ -317,31 +308,20 @@ const signUp = async (email: string, password: string, name: string, userData?: 
       },
     });
 
-    console.log("📤 Resultado do auth.signUp:", result);
+    console.log("Resultado do auth.signUp:", result);
 
     // Se o cadastro for bem-sucedido, criar ou atualizar perfil do usuário como cliente
     if (result.data?.user && !result.error) {
-      // Preparar dados do endereço
-      let enderecoJson = null;
-      if (userData?.endereco) {
-        try {
-          enderecoJson = JSON.stringify(userData.endereco);
-          console.log("🏠 Endereço serializado:", enderecoJson);
-        } catch (err) {
-          console.error("❌ Erro ao serializar endereço:", err);
-        }
-      }
-
       const profileData = {
         id: result.data.user.id,
-        name: name?.trim() || '',
+        name,
         role: 'cliente', // Novos usuários são clientes por padrão
-        cpf: userData?.cpf?.trim() || null,
-        telefone: userData?.telefone?.trim() || null,
-        endereco: enderecoJson,
+        cpf: userData?.cpf || null,
+        telefone: userData?.telefone || null,
+        endereco: userData?.endereco ? JSON.stringify(userData.endereco) : null,
       };
 
-      console.log("💾 Dados do perfil a serem inseridos:", profileData);
+      console.log("Dados do perfil a serem inseridos:", profileData);
       
       // Tentar inserir o perfil, se falhar por conflito, atualizar
       const { data: insertedData, error } = await supabase
@@ -350,31 +330,17 @@ const signUp = async (email: string, password: string, name: string, userData?: 
         .select();
 
       if (error) {
-        console.error("❌ Erro ao criar/atualizar perfil:", error);
-        console.error("❌ Detalhes do erro:", JSON.stringify(error, null, 2));
+        console.error("Erro ao criar/atualizar perfil:", error);
       } else {
-        console.log("✅ Perfil criado/atualizado com sucesso:", insertedData);
-        
-        // Verificar se os dados foram realmente salvos
-        const { data: verifyData, error: verifyError } = await supabase
-          .from("profiles")
-          .select('*')
-          .eq('id', result.data.user.id)
-          .single();
-          
-        if (verifyError) {
-          console.error("❌ Erro ao verificar perfil salvo:", verifyError);
-        } else {
-          console.log("🔍 Perfil verificado após inserção:", verifyData);
-        }
+        console.log("Perfil criado/atualizado com sucesso:", insertedData);
       }
     } else if (result.error) {
-      console.log("❌ Erro no auth.signUp, não criando perfil:", result.error);
+      console.log("Erro no auth.signUp, não criando perfil:", result.error);
     }
 
     return result;
   } catch (error) {
-    console.error("❌ Erro no cadastro:", error);
+    console.error("Erro no cadastro:", error);
     return { error };
   }
 };

@@ -1,20 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Music, Download, Video, Loader2, Type } from "lucide-react";
+import { ArrowLeft, Music, Download, Share2, Heart, Video, Loader2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-<<<<<<< HEAD
-
-import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
-import { hasAccessToVerse } from '../services/purchaseService';
-import { useAuth } from '@/hooks/useAuth';
-=======
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useCart } from "@/hooks/useCart";
-import { CartProvider } from "@/hooks/useCart";
+
 import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
 import { Database } from '../integrations/supabase/types';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
@@ -61,7 +53,6 @@ const displayData = (value: any, fallback: string = 'Não informado'): string =>
 const VerseDetails = () => {
   const { id, slug } = useParams<{ id?: string; slug?: string }>();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
   const [verse, setVerse] = useState<Verse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,16 +71,6 @@ const VerseDetails = () => {
       if (!identifier && pathSegments.length > 0) {
         // Pegar o último segmento que não seja vazio
         identifier = pathSegments[pathSegments.length - 1];
-      }
-      
-      // Verificar se o identificador é uma rota específica que não deve ser tratada como verso
-      const reservedRoutes = ['manage-verses', 'manage-users', 'create', 'login', 'music', 'pre-purchase', 'meus-pedidos'];
-      if (identifier && reservedRoutes.includes(identifier)) {
-        console.log('🚫 Rota reservada detectada, não é um verso:', identifier);
-        setIsLoading(false);
-        setError(null);
-        setVerse(null);
-        return;
       }
       
       console.log('🔍 Informações da URL:', {
@@ -116,16 +97,6 @@ const VerseDetails = () => {
         
         if (data) {
           console.log('✅ Verso encontrado:', { id: data.id, titulo: data.titulo_pt_br || data.titulo_original });
-          
-          // Verificar se o usuário tem acesso ao verso
-          const hasAccess = await hasAccessToVerse(user?.id || null, data.id, profile?.role);
-          
-          if (!hasAccess) {
-            console.log('🚫 Usuário não tem acesso ao verso, redirecionando para pré-compra');
-            navigate(`/pre-purchase/${data.id}`, { replace: true });
-            return;
-          }
-          
           setVerse(data);
           
           // Incrementar visualizações
@@ -186,11 +157,6 @@ const VerseDetails = () => {
   }
 
   if (!verse) {
-    // Se não há verso e não há erro, é uma rota reservada - não renderizar nada
-    if (!error) {
-      return null;
-    }
-    
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -223,6 +189,7 @@ const VerseDetails = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <Header />
         
         <main className="container mx-auto px-4 sm:px-6 py-6">
           {/* Botão Voltar */}
@@ -305,11 +272,7 @@ const VerseDetails = () => {
 
               {/* Ações */}
               <div className="space-y-4">
-<<<<<<< HEAD
                 {/* Botão de download PDF */}
-=======
-                {/* Botão de adicionar ao carrinho */}
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
                 <Button
                   onClick={handleDownloadPDF}
                   disabled={!verse.pdf}
@@ -319,7 +282,23 @@ const VerseDetails = () => {
                   {verse.pdf ? 'Baixar PDF' : 'PDF Indisponível'}
                 </Button>
                 
-
+                {/* Botões de Ação Secundários */}
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full border-gray-300 hover:bg-gray-50"
+                  >
+                    <Heart className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full border-gray-300 hover:bg-gray-50"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -334,6 +313,11 @@ const VerseDetails = () => {
                   {displayData(verse.titulo_original || verse.titulo_pt_br, 'Título')}
                 </h1>
                 <p className="text-xl text-gray-600 mb-4">{displayData(verse.musical, 'Musical')}</p>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <span>{(verse.visualizacoes || 0).toLocaleString()} visualizações</span>
+                  <span>•</span>
+                  <span>{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
+                </div>
               </div>
 
               {/* Título Traduzido */}
@@ -419,6 +403,7 @@ const VerseDetails = () => {
 
         </main>
 
+        <Footer />
       </div>
   );
 };

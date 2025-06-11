@@ -177,49 +177,24 @@ const Login = () => {
 
       setLoading(true);
       try {
-        // Verificar todos os campos antes de enviar
-        console.log("🔍 Dados do formulário antes do envio:", {
-          email: email?.trim(),
-          name: name?.trim(),
-          cpf: cpf?.trim(),
-          telefone: telefone?.trim(),
-          endereco: {
-            rua: rua?.trim(),
-            numero: numero?.trim(),
-            complemento: complemento?.trim(),
-            bairro: bairro?.trim(),
-            cidade: cidade?.trim(),
-            estado: estado?.trim(),
-            cep: cep?.trim()
-          }
-        });
-
         const userData = {
-          email: email?.trim(),
-          name: name?.trim(),
-          cpf: cpf?.trim(),
-          telefone: telefone?.trim(),
+          email,
+          name,
+          cpf,
+          telefone,
           endereco: {
-            rua: rua?.trim(),
-            numero: numero?.trim(),
-            complemento: complemento?.trim() || '',
-            bairro: bairro?.trim(),
-            cidade: cidade?.trim(),
-            estado: estado?.trim(),
-            cep: cep?.trim()
+            rua,
+            numero,
+            complemento,
+            bairro,
+            cidade,
+            estado,
+            cep
           }
         };
         
-        console.log("📤 Tentando cadastrar usuário:", userData);
-        console.log("📋 Verificação de campos obrigatórios:", {
-          emailOk: !!userData.email,
-          nameOk: !!userData.name,
-          cpfOk: !!userData.cpf,
-          telefoneOk: !!userData.telefone,
-          enderecoOk: !!(userData.endereco.rua && userData.endereco.numero && userData.endereco.bairro && userData.endereco.cidade && userData.endereco.estado && userData.endereco.cep)
-        });
-        
-        const result = await signUp(email?.trim(), password, name?.trim(), userData);
+        console.log("Tentando cadastrar usuário:", userData);
+        const result = await signUp(email, password, name, userData);
 
         if (result.error) {
           console.error("Erro na autenticação:", result.error);

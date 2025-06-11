@@ -9,6 +9,87 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento: string | null
+          created_at: string | null
+          estado: string
+          id: string
+          is_default: boolean | null
+          numero: string
+          rua: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento?: string | null
+          created_at?: string | null
+          estado: string
+          id?: string
+          is_default?: boolean | null
+          numero: string
+          rua: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string | null
+          created_at?: string | null
+          estado?: string
+          id?: string
+          is_default?: boolean | null
+          numero?: string
+          rua?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          address: Json
+          created_at: string | null
+          id: string
+          items: Json
+          payment_id: string
+          status: string
+          total_amount: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          address: Json
+          created_at?: string | null
+          id?: string
+          items: Json
+          payment_id: string
+          status?: string
+          total_amount: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          address?: Json
+          created_at?: string | null
+          id?: string
+          items?: Json
+          payment_id?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           cpf: string | null
@@ -464,7 +545,6 @@ export type Database = {
           updated_at: string | null
         }
       }
-<<<<<<< HEAD
       get_all_profiles_admin: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -478,8 +558,6 @@ export type Database = {
           endereco: Json
         }[]
       }
-=======
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
       get_all_users: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -494,16 +572,31 @@ export type Database = {
           profile_role: string
           profile_cpf: string
           profile_telefone: string
-<<<<<<< HEAD
           profile_endereco: string
-=======
-          profile_endereco: Json
->>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
           profile_created_at: string
         }[]
       }
       get_user_profile: {
         Args: { user_id: string }
+        Returns: {
+          cpf: string | null
+          created_at: string | null
+          endereco: Json | null
+          id: string
+          name: string
+          role: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+      }
+      update_user_profile: {
+        Args: {
+          user_id: string
+          user_name?: string
+          user_cpf?: string
+          user_telefone?: string
+          user_endereco?: Json
+        }
         Returns: {
           cpf: string | null
           created_at: string | null
@@ -616,18 +709,22 @@ export type Enums<
     : never
 
 export type CompositeTypes<
-  DefaultSchemaCompositeTypeNameOrOptions extends
+  PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof Database },
-  CompositeTypeName extends DefaultSchemaCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof Database[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = DefaultSchemaCompositeTypeNameOrOptions extends {
-  schema: keyof Database
-}
-  ? Database[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : DefaultSchemaCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][DefaultSchemaCompositeTypeNameOrOptions]
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

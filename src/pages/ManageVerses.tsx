@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { Link, useNavigate } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
@@ -67,11 +69,13 @@ const ManageVerses: React.FC = () => {
     return (
       <CartProvider>
         <div className="min-h-screen bg-gray-50">
+          <Header />
           <div className="container mx-auto px-4 py-8">
             <div className="text-center">
               <p className="text-gray-600">Carregando...</p>
             </div>
           </div>
+          <Footer />
         </div>
       </CartProvider>
     );
@@ -91,6 +95,7 @@ const ManageVerses: React.FC = () => {
     return (
       <CartProvider>
         <div className="min-h-screen bg-gray-50">
+          <Header />
           <div className="container mx-auto px-4 py-8">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">Acesso Negado</h1>
@@ -103,6 +108,7 @@ const ManageVerses: React.FC = () => {
               </Button>
             </div>
           </div>
+          <Footer />
         </div>
       </CartProvider>
     );
@@ -380,6 +386,7 @@ const ManageVerses: React.FC = () => {
   return (
     <CartProvider>
       <div className="min-h-screen bg-gray-50">
+        <Header />
         
         <main className="container mx-auto px-4 sm:px-6 py-8">
           {/* Cabeçalho da Página */}
@@ -674,6 +681,8 @@ const ManageVerses: React.FC = () => {
             )}
           </Card>
         </main>
+
+        <Footer />
         
         {/* Diálogo de Confirmação de Exclusão */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

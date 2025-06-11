@@ -1,5 +1,4 @@
-
-import { supabase } from '@/integrations/supabase/client';
+// Serviço para integração com Mercado Pago
 
 interface PaymentData {
   amount: number;
@@ -23,12 +22,18 @@ interface CardFormData {
 }
 
 class MercadoPagoService {
+  private static readonly ACCESS_TOKEN = 'TEST-9000755864322739-040517-b78143b7c50807aac56e0ae931411b49-27094027';
+  private static readonly API_URL = 'https://api.mercadopago.com/v1';
+
   static async createPixPayment(paymentData: PaymentData) {
     try {
-      console.log('Criando pagamento PIX:', paymentData);
-
-      const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
-        body: {
+      const response = await fetch(`${this.API_URL}/payments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           transaction_amount: paymentData.amount,
           description: paymentData.description,
           payment_method_id: 'pix',
@@ -40,20 +45,17 @@ class MercadoPagoService {
               type: 'CPF',
               number: '00000000000'
             }
-          },
-          metadata: {
-            items: paymentData.items
           }
-        },
+        }),
       });
 
-      if (error) {
-        console.error('Erro no edge function:', error);
-        throw new Error(error.message || 'Erro ao criar pagamento PIX');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      console.log('Resposta do PIX:', data);
-
+      const data = await response.json();
+      
       // Extrair QR Code e código copia e cola da resposta
       const qrCodeBase64 = data.point_of_interaction?.transaction_data?.qr_code_base64;
       const qrCode = data.point_of_interaction?.transaction_data?.qr_code;
@@ -76,28 +78,27 @@ class MercadoPagoService {
 
   static async checkPaymentStatus(paymentId: string) {
     try {
-      console.log('Verificando status do pagamento:', paymentId);
-
-      const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
-        method: 'GET',
-        body: { payment_id: paymentId },
+      const response = await fetch(`${this.API_URL}/payments/${paymentId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.ACCESS_TOKEN}`,
+        },
       });
 
-      if (error) {
-        console.error('Erro ao verificar status:', error);
+      const data = await response.json();
+      
+      if (response.ok) {
+        return {
+          success: true,
+          status: data.status,
+          status_detail: data.status_detail,
+        };
+      } else {
         return {
           success: false,
-          error: error.message || 'Erro ao verificar status do pagamento',
+          error: data.message || 'Erro ao verificar status do pagamento',
         };
       }
-
-      return {
-        success: true,
-        status: data.status,
-        status_detail: data.status_detail,
-      };
     } catch (error: any) {
-      console.error('Erro ao verificar status:', error);
       return {
         success: false,
         error: error.message || 'Erro de conexão',
@@ -107,10 +108,13 @@ class MercadoPagoService {
 
   static async createCardPayment(cardFormData: CardFormData, paymentData: PaymentData) {
     try {
-      console.log('Criando pagamento com cartão:', { cardFormData, paymentData });
-
-      const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
-        body: {
+      const response = await fetch(`${this.API_URL}/payments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           transaction_amount: paymentData.amount,
           description: paymentData.description,
           payment_method_id: cardFormData.payment_method_id,
@@ -124,32 +128,32 @@ class MercadoPagoService {
               number: cardFormData.identificationNumber,
             },
           },
-          metadata: {
+          additional_info: {
             items: paymentData.items,
             payer: {
               first_name: cardFormData.cardholderName.split(' ')[0] || '',
               last_name: cardFormData.cardholderName.split(' ').slice(1).join(' ') || '',
             },
           },
-        },
+        }),
       });
 
-      if (error) {
-        console.error('Erro no edge function:', error);
+      const data = await response.json();
+      
+      if (response.ok) {
+        return {
+          success: true,
+          id: data.id,
+          status: data.status,
+          status_detail: data.status_detail,
+        };
+      } else {
         return {
           success: false,
-          error: error.message || 'Erro ao processar pagamento com cartão',
+          error: data.message || data.cause?.[0]?.description || 'Erro ao processar pagamento com cartão',
         };
       }
-
-      return {
-        success: true,
-        id: data.id,
-        status: data.status,
-        status_detail: data.status_detail,
-      };
     } catch (error: any) {
-      console.error('Erro ao processar pagamento:', error);
       return {
         success: false,
         error: error.message || 'Erro de conexão',

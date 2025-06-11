@@ -17,7 +17,9 @@ const ManageUsers = lazy(() => import("./pages/ManageUsers"));
 const CreateVerse = lazy(() => import("./pages/CreateVerse"));
 const EditVerse = lazy(() => import("./pages/EditVerse"));
 const VerseDetails = lazy(() => import("./pages/VerseDetails"));
-const MyOrders = lazy(() => import("./pages/MyOrders"));
+const CheckoutAddress = lazy(() => import("./pages/CheckoutAddress"));
+const CheckoutPayment = lazy(() => import("./pages/CheckoutPayment"));
+const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -58,7 +60,9 @@ const App = () => (
                 <Route path="/create-verse" element={<CreateVerse />} />
                 <Route path="/edit-verse/:id" element={<EditVerse />} />
                 <Route path="/verse/:id" element={<VerseDetails />} />
-                <Route path="/my-orders" element={<MyOrders />} />
+                <Route path="/checkout/address" element={<CheckoutAddress />} />
+                <Route path="/checkout/payment" element={<CheckoutPayment />} />
+                <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/:slug" element={<VerseDetails />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

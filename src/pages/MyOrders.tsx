@@ -1,235 +1,259 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { getUserPurchases } from '@/services/purchaseService';
+import { getVersesByIds, Verse } from '@/services/versesService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Package, CreditCard, Download, Eye } from 'lucide-react';
-import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-
-interface Order {
-  id: string;
-  payment_id: string;
-  total_amount: number;
-  status: string;
-  address: any;
-  items: any[];
-  created_at: string;
-  updated_at: string;
-}
+import { Badge } from '@/components/ui/badge';
+// import { Separator } from '@/components/ui/separator';
+import { Link } from 'react-router-dom';
+import { Music, Calendar, User, ArrowLeft, Package, Heart } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const MyOrders = () => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [purchasedVerses, setPurchasedVerses] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      loadOrders();
-    }
-  }, [user]);
-
-  const loadOrders = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
+    const fetchPurchasedVerses = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
       }
 
-      setOrders(data || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar pedidos:', error);
-      toast.error('Erro ao carregar pedidos');
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Buscar IDs dos versos comprados pelo usuário
+        const purchasedVerseIds = await getUserPurchases(user.id);
+        
+        if (purchasedVerseIds.length === 0) {
+          setPurchasedVerses([]);
+          setLoading(false);
+          return;
+        }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-      case 'paid':
-        return <Badge className="bg-green-100 text-green-800">Concluído</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Pendente</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800">Cancelado</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+        // Buscar detalhes dos versos
+        const verses = await getVersesByIds(purchasedVerseIds);
+        
+        // Criar um Set para evitar duplicatas
+        const uniqueVerses = new Map<number, Verse>();
+        
+        // Adicionar versos principais
+        verses.forEach(verse => {
+          uniqueVerses.set(verse.id, verse);
+        });
+        
+        // Adicionar versões irmãs
+        for (const verse of verses) {
+          if (verse.versoes_irmas && verse.versoes_irmas.length > 0) {
+            try {
+              const siblingVerses = await getVersesByIds(verse.versoes_irmas);
+              siblingVerses.forEach(siblingVerse => {
+                uniqueVerses.set(siblingVerse.id, siblingVerse);
+              });
+            } catch (error) {
+              console.error('Erro ao buscar versões irmãs:', error);
+            }
+          }
+        }
+        
+        // Converter Map para array e ordenar por data de criação (mais recente primeiro)
+        const allVerses = Array.from(uniqueVerses.values())
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        setPurchasedVerses(allVerses);
+      } catch (error) {
+        console.error('Erro ao buscar versos comprados:', error);
+        setError('Erro ao carregar seus pedidos. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPurchasedVerses();
+  }, [user]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
+  };
+
+  const getMusicalIcon = (musical: string) => {
+    const musicalLower = musical.toLowerCase();
+    if (musicalLower.includes('hamilton')) return '/hamilton.svg';
+    if (musicalLower.includes('hakuna matata') || musicalLower.includes('rei leão')) return '/hakuna-matata.svg';
+    if (musicalLower.includes('les misérables') || musicalLower.includes('miseráveis')) return '/les-miserables.svg';
+    return '/musical-generic.svg';
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="p-8 text-center">
+            <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
+            <p className="text-gray-600 mb-4">Você precisa estar logado para ver seus pedidos.</p>
+            <Link to="/login">
+              <Button className="w-full">
+                Fazer Login
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <Package className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl font-bold">Meus Pedidos</h1>
-      </div>
-
-      {orders.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Package className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum pedido encontrado</h3>
-            <p className="text-gray-600 mb-4">Você ainda não fez nenhuma compra.</p>
-            <Button onClick={() => window.location.href = '/'} className="rounded-full">
-              Explorar Músicas
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <Card key={order.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">Pedido #{order.payment_id}</h3>
-                      {getStatusBadge(order.status)}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4" />
-                        <span>Data: {formatDate(order.created_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="w-4 h-4" />
-                        <span>Total: R$ {order.total_amount.toFixed(2)}</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3">
-                      <p className="text-sm font-medium text-gray-700">
-                        Itens: {order.items.length} música{order.items.length !== 1 ? 's' : ''}
-                      </p>
-                      <div className="mt-1">
-                        {order.items.slice(0, 2).map((item: any, index: number) => (
-                          <span key={index} className="text-sm text-gray-600">
-                            {item.title}
-                            {index < Math.min(order.items.length - 1, 1) && ', '}
-                          </span>
-                        ))}
-                        {order.items.length > 2 && (
-                          <span className="text-sm text-gray-600">
-                            {' '}e mais {order.items.length - 2} música{order.items.length - 2 !== 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedOrder(order)}
-                          className="rounded-full"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Detalhes
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Detalhes do Pedido #{selectedOrder?.payment_id}</DialogTitle>
-                        </DialogHeader>
-                        {selectedOrder && (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <strong>Status:</strong> {getStatusBadge(selectedOrder.status)}
-                              </div>
-                              <div>
-                                <strong>Total:</strong> R$ {selectedOrder.total_amount.toFixed(2)}
-                              </div>
-                              <div>
-                                <strong>Data:</strong> {formatDate(selectedOrder.created_at)}
-                              </div>
-                              <div>
-                                <strong>ID Pagamento:</strong> {selectedOrder.payment_id}
-                              </div>
-                            </div>
-
-                            <div>
-                              <strong>Endereço de Entrega:</strong>
-                              <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">
-                                {selectedOrder.address.rua}, {selectedOrder.address.numero}
-                                {selectedOrder.address.complemento && `, ${selectedOrder.address.complemento}`}
-                                <br />
-                                {selectedOrder.address.bairro}, {selectedOrder.address.cidade} - {selectedOrder.address.estado}
-                                <br />
-                                CEP: {selectedOrder.address.cep}
-                              </div>
-                            </div>
-
-                            <div>
-                              <strong>Itens do Pedido:</strong>
-                              <div className="mt-2 space-y-2">
-                                {selectedOrder.items.map((item: any, index: number) => (
-                                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                                    <div>
-                                      <p className="font-medium">{item.title}</p>
-                                      <p className="text-sm text-gray-600">{item.artist}</p>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="font-medium">R$ {item.price.toFixed(2)}</p>
-                                      <p className="text-sm text-gray-600">Qtd: {item.quantity}</p>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
-
-                    {(order.status === 'completed' || order.status === 'paid') && (
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700 rounded-full">
-                        <Download className="w-4 h-4 mr-2" />
-                        Downloads
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="rounded-full">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="flex items-center gap-3 mb-2">
+            <Package className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Meus Pedidos
+            </h1>
+          </div>
+          
+          <p className="text-gray-600 text-lg">
+            Aqui estão todos os versos que você adquiriu, incluindo versões irmãs
+          </p>
         </div>
-      )}
+
+        {/* Error State */}
+        {error && (
+          <Card className="mb-8 border-red-200 bg-red-50">
+            <CardContent className="p-6">
+              <p className="text-red-600">{error}</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline" 
+                className="mt-4"
+              >
+                Tentar Novamente
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty State */}
+        {!error && purchasedVerses.length === 0 && (
+          <Card className="w-full max-w-2xl mx-auto">
+            <CardContent className="p-12 text-center">
+              <Package className="w-20 h-20 mx-auto mb-6 text-gray-300" />
+              <h2 className="text-2xl font-semibold mb-4 text-gray-700">
+                Nenhum pedido encontrado
+              </h2>
+              <p className="text-gray-500 mb-6 text-lg">
+                Você ainda não adquiriu nenhum verso. Explore nossa coleção e encontre suas músicas favoritas!
+              </p>
+              <Link to="/music">
+                <Button size="lg" className="px-8">
+                  <Music className="w-5 h-5 mr-2" />
+                  Explorar Músicas
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Verses Grid */}
+        {!error && purchasedVerses.length > 0 && (
+          <>
+            <div className="mb-6">
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                {purchasedVerses.length} {purchasedVerses.length === 1 ? 'verso disponível' : 'versos disponíveis'}
+              </Badge>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {purchasedVerses.map((verse) => (
+                <Card key={verse.id} className="group hover:shadow-lg transition-all duration-300 border-0 shadow-md hover:shadow-xl hover:-translate-y-1">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={getMusicalIcon(verse.musical)} 
+                          alt={verse.musical}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <div>
+                          <CardTitle className="text-lg font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+                            {verse.titulo_pt_br}
+                          </CardTitle>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {verse.musical}
+                          </p>
+                        </div>
+                      </div>
+                      <Heart className="w-5 h-5 text-red-500 fill-current" />
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      {verse.titulo_original && verse.titulo_original !== verse.titulo_pt_br && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">
+                            Título Original:
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {verse.titulo_original}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="h-px bg-gray-200 w-full" />
+                      
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>Adquirido em {formatDate(verse.criada_em || new Date().toISOString())}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <Link to={`/verse/${verse.id}`} className="flex-1">
+                          <Button variant="default" size="sm" className="w-full">
+                            <Music className="w-4 h-4 mr-2" />
+                            Ver Detalhes
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

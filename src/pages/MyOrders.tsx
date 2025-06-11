@@ -57,6 +57,7 @@ const MyOrders = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'paid':
         return <Badge className="bg-green-100 text-green-800">Concluído</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800">Pendente</Badge>;
@@ -100,7 +101,7 @@ const MyOrders = () => {
             <Package className="w-16 h-16 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum pedido encontrado</h3>
             <p className="text-gray-600 mb-4">Você ainda não fez nenhuma compra.</p>
-            <Button onClick={() => window.location.href = '/'}>
+            <Button onClick={() => window.location.href = '/'} className="rounded-full">
               Explorar Músicas
             </Button>
           </CardContent>
@@ -155,6 +156,7 @@ const MyOrders = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedOrder(order)}
+                          className="rounded-full"
                         >
                           <Eye className="w-4 h-4 mr-2" />
                           Detalhes
@@ -215,8 +217,8 @@ const MyOrders = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {order.status === 'completed' && (
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                    {(order.status === 'completed' || order.status === 'paid') && (
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700 rounded-full">
                         <Download className="w-4 h-4 mr-2" />
                         Downloads
                       </Button>

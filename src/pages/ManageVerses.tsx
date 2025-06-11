@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getVerses, deleteVerse } from '@/services/versesService';
@@ -12,16 +13,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Verse {
   id: number;
-  titulo_pt_br: string;
-  titulo_original: string;
-  musical: string;
-  estilo: string[];
-  dificuldade: number;
-  valor: number;
-  url_imagem: string;
-  status: string;
-  criada_em: string;
-  atualizada_em: string;
+  title: string;
+  artist: string;
+  category: string;
+  image?: string;
+  price: number;
+  description?: string;
+  difficulty?: number;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 const ManageVerses = () => {
@@ -36,8 +37,10 @@ const ManageVerses = () => {
   const [difficultyFilter, setDifficultyFilter] = useState('all');
 
   useEffect(() => {
-    loadVerses();
-  }, []);
+    if (profile?.role === 'admin') {
+      loadVerses();
+    }
+  }, [profile]);
 
   const loadVerses = async () => {
     try {
@@ -70,13 +73,13 @@ const ManageVerses = () => {
   };
 
   const filteredVerses = verses.filter(verse => {
-    const matchesSearch = verse.titulo_pt_br?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         verse.titulo_original?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         verse.musical?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = verse.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         verse.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         verse.artist?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesMusical = musicalFilter === 'all' || verse.musical === musicalFilter;
-    const matchesStyle = styleFilter === 'all' || verse.estilo?.includes(styleFilter);
-    const matchesDifficulty = difficultyFilter === 'all' || verse.dificuldade?.toString() === difficultyFilter;
+    const matchesMusical = musicalFilter === 'all' || verse.artist === musicalFilter;
+    const matchesStyle = styleFilter === 'all' || verse.category?.includes(styleFilter);
+    const matchesDifficulty = difficultyFilter === 'all' || verse.difficulty?.toString() === difficultyFilter;
 
     return matchesSearch && matchesMusical && matchesStyle && matchesDifficulty;
   });
@@ -87,6 +90,18 @@ const ManageVerses = () => {
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
         </div>
+      </div>
+    );
+  }
+
+  if (profile?.role !== 'admin') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert>
+          <AlertDescription>
+            Você não tem permissão para acessar esta página.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -103,9 +118,15 @@ const ManageVerses = () => {
             Total de versos: {verses.length}
           </p>
         </div>
-        <Button onClick={loadVerses} variant="outline">
-          Atualizar Lista
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate('/create-verse')} className="rounded-full">
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Verso
+          </Button>
+          <Button onClick={loadVerses} variant="outline" className="rounded-full">
+            Atualizar Lista
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -121,43 +142,70 @@ const ManageVerses = () => {
             placeholder="Buscar por título, musical..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-full"
           />
         </div>
         <Input
-            placeholder="Filtrar por musical..."
-            value={musicalFilter}
-            onChange={(e) => setMusicalFilter(e.target.value)}
-            className="pl-10"
-          />
-          <Input
-            placeholder="Filtrar por estilo..."
-            value={styleFilter}
-            onChange={(e) => setStyleFilter(e.target.value)}
-            className="pl-10"
-          />
-          <Input
-            placeholder="Filtrar por dificuldade..."
-            value={difficultyFilter}
-            onChange={(e) => setDifficultyFilter(e.target.value)}
-            className="pl-10"
-          />
+          placeholder="Filtrar por musical (all para todos)..."
+          value={musicalFilter}
+          onChange={(e) => setMusicalFilter(e.target.value)}
+          className="rounded-full"
+        />
+        <Input
+          placeholder="Filtrar por estilo (all para todos)..."
+          value={styleFilter}
+          onChange={(e) => setStyleFilter(e.target.value)}
+          className="rounded-full"
+        />
+        <Input
+          placeholder="Filtrar por dificuldade (all para todos)..."
+          value={difficultyFilter}
+          onChange={(e) => setDifficultyFilter(e.target.value)}
+          className="rounded-full"
+        />
       </div>
 
       <div className="grid gap-4">
-        {filteredVerses.map((verseData) => (
-          <Card key={verseData.id} className="hover:shadow-md transition-shadow">
+        {filteredVerses.map((verse) => (
+          <Card key={verse.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-lg">{verseData.titulo_pt_br}</h3>
-                    <Badge variant="secondary">{verseData.musical}</Badge>
+                <div className="flex gap-4 flex-1">
+                  {/* Imagem */}
+                  <div className="w-20 h-20 flex-shrink-0">
+                    <img
+                      src={verse.image || '/placeholder.svg'}
+                      alt={verse.title}
+                      className="w-full h-full object-cover rounded-md"
+                    />
                   </div>
-                  <p className="text-gray-600 mb-1">{verseData.titulo_original}</p>
-                  <div className="text-sm text-gray-500 mt-2">
-                    <p>Cadastrado em: {new Date(verseData.criada_em).toLocaleDateString('pt-BR')}</p>
-                    <p>Atualizado em: {new Date(verseData.atualizada_em).toLocaleDateString('pt-BR')}</p>
+                  
+                  {/* Informações */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-lg">{verse.title}</h3>
+                      <Badge variant="secondary">{verse.artist}</Badge>
+                      {verse.category && (
+                        <Badge variant="outline">{verse.category}</Badge>
+                      )}
+                    </div>
+                    <p className="text-gray-600 mb-1">{verse.description}</p>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="w-4 h-4" />
+                        <span>R$ {verse.price.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      {verse.difficulty && (
+                        <div className="flex items-center gap-1">
+                          <span>Dificuldade: {verse.difficulty}/5</span>
+                        </div>
+                      )}
+                      {verse.createdAt && (
+                        <div>
+                          Criado em: {new Date(verse.createdAt).toLocaleDateString('pt-BR')}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -165,7 +213,17 @@ const ManageVerses = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/edit-verse/${verseData.id}`)}
+                    onClick={() => navigate(`/verse/${verse.id}`)}
+                    className="rounded-full"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/edit-verse/${verse.id}`)}
+                    className="rounded-full"
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -173,8 +231,8 @@ const ManageVerses = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDelete(verseData.id)}
-                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDelete(verse.id)}
+                    className="text-red-600 hover:text-red-700 rounded-full"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -185,16 +243,26 @@ const ManageVerses = () => {
         ))}
       </div>
 
-      {filteredVerses.length === 0 && (
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      )}
+
+      {filteredVerses.length === 0 && !loading && (
         <Card>
           <CardContent className="p-8 text-center">
             <Music className="w-16 h-16 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum verso encontrado</h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-4">
               {searchTerm || musicalFilter !== 'all'
                 ? 'Tente ajustar os filtros de busca.'
                 : 'Não há versos cadastrados no sistema.'}
             </p>
+            <Button onClick={() => navigate('/create-verse')} className="rounded-full">
+              <Plus className="w-4 h-4 mr-2" />
+              Criar Primeiro Verso
+            </Button>
           </CardContent>
         </Card>
       )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -127,10 +128,10 @@ const ManageUsers = () => {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+  const filteredUsers = users.filter(userData => {
+    const matchesSearch = userData.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         userData.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || userData.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
@@ -184,7 +185,7 @@ const ManageUsers = () => {
             Total de usuários: {users.length}
           </p>
         </div>
-        <Button onClick={loadUsers} variant="outline">
+        <Button onClick={loadUsers} variant="outline" className="rounded-full">
           Atualizar Lista
         </Button>
       </div>
@@ -202,11 +203,11 @@ const ManageUsers = () => {
             placeholder="Buscar por nome ou email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-full"
           />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-full md:w-48">
+          <SelectTrigger className="w-full md:w-48 rounded-full">
             <SelectValue placeholder="Filtrar por papel" />
           </SelectTrigger>
           <SelectContent>
@@ -256,6 +257,7 @@ const ManageUsers = () => {
                           setEditingUser(userData);
                           setNewRole(userData.role);
                         }}
+                        className="rounded-full"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -294,7 +296,7 @@ const ManageUsers = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteUser(userData.id)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 rounded-full"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

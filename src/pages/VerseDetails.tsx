@@ -3,10 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Music, Download, Video, Loader2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+<<<<<<< HEAD
 
 import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
 import { hasAccessToVerse } from '../services/purchaseService';
 import { useAuth } from '@/hooks/useAuth';
+=======
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { useCart } from "@/hooks/useCart";
+import { CartProvider } from "@/hooks/useCart";
+import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
+>>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
 import { Database } from '../integrations/supabase/types';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
@@ -297,7 +305,11 @@ const VerseDetails = () => {
 
               {/* Ações */}
               <div className="space-y-4">
+<<<<<<< HEAD
                 {/* Botão de download PDF */}
+=======
+                {/* Botão de adicionar ao carrinho */}
+>>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
                 <Button
                   onClick={handleDownloadPDF}
                   disabled={!verse.pdf}

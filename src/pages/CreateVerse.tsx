@@ -512,6 +512,130 @@ const CreateVerse = () => {
                     </div>
                   )}
                   
+<<<<<<< HEAD
+=======
+                  {selectedVerses.length >= 10 && (
+                    <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      Limite máximo de 10 versões irmãs atingido
+                    </div>
+                  )}
+                </div>
+                
+                <div className="md:col-span-2">
+                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                    Thumbnail do Verso
+                  </Label>
+                  
+                  {/* Seletor de método */}
+                  <div className="flex space-x-4 mb-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="uploadMethod"
+                        value="url"
+                        checked={uploadMethod === 'url'}
+                        onChange={(e) => setUploadMethod(e.target.value as 'url' | 'file')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">URL Externa</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="uploadMethod"
+                        value="file"
+                        checked={uploadMethod === 'file'}
+                        onChange={(e) => setUploadMethod(e.target.value as 'url' | 'file')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Upload Local</span>
+                    </label>
+                  </div>
+                  
+                  {uploadMethod === 'url' ? (
+                    <div className="space-y-3">
+                      {/* Informações sobre dimensões recomendadas para URL */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-start space-x-2">
+                          <Image className="w-4 h-4 text-blue-600 mt-0.5" />
+                          <div className="text-sm text-blue-800">
+                            <p className="font-medium mb-1">📐 Dimensões Recomendadas:</p>
+                            <p className="text-xs">• <strong>Ideal:</strong> 400x400px (formato quadrado)</p>
+                            <p className="text-xs">• <strong>Proporção:</strong> 1:1 para melhor visualização nos cards</p>
+                            <p className="text-xs text-blue-600 mt-1">💡 <em>Imagens de URL também são otimizadas automaticamente!</em></p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Input
+                        id="imageUrl"
+                        value={formData.imageUrl || ''}
+                        onChange={(e) => {
+                          handleInputChange('imageUrl', e.target.value);
+                          setImagePreview(e.target.value);
+                        }}
+                        placeholder="https://exemplo.com/imagem.jpg"
+                        className="rounded-lg border-gray-300 focus:border-primary"
+                      />
+                      
+                      {formData.imageUrl && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <p className="text-sm text-green-700 font-medium">
+                            ✓ URL da imagem inserida
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            🔄 Será automaticamente otimizada para 400x400px com fundo branco
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Informações sobre dimensões recomendadas */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-start space-x-2">
+                          <Image className="w-4 h-4 text-blue-600 mt-0.5" />
+                          <div className="text-sm text-blue-800">
+                            <p className="font-medium mb-1">📐 Dimensões Recomendadas:</p>
+                            <p className="text-xs">• <strong>Ideal:</strong> 400x400px (formato quadrado)</p>
+                            <p className="text-xs">• <strong>Proporção:</strong> 1:1 para melhor visualização nos cards</p>
+                            <p className="text-xs text-blue-600 mt-1">💡 <em>Não se preocupe! Nosso sistema ajusta automaticamente qualquer imagem para o formato ideal.</em></p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-center w-full">
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                            <p className="mb-2 text-sm text-gray-500">
+                              <span className="font-semibold">Clique para enviar</span> ou arraste e solte
+                            </p>
+                            <p className="text-xs text-gray-500">JPEG, JPG, PNG, SVG, WebP (máx. 5MB)</p>
+                            <p className="text-xs text-green-600 mt-1">✨ Redimensionamento automático ativado</p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".jpeg,.jpg,.png,.svg,.webp"
+                            onChange={handleFileUpload}
+                          />
+                        </label>
+                      </div>
+                      {formData.imageFile && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <p className="text-sm text-green-700 font-medium">
+                            ✓ Arquivo selecionado: {formData.imageFile.name}
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            🔄 Será automaticamente otimizado para 400x400px com fundo branco
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+>>>>>>> 8733462462df6921ef74eed03e02dac34e58901f
                   {/* Preview da imagem */}
                   {imagePreview && (
                     <div className="mt-4">

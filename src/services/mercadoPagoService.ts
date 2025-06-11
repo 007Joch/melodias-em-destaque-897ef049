@@ -1,3 +1,4 @@
+
 // Serviço para integração com Mercado Pago
 
 interface PaymentData {

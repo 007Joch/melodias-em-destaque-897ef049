@@ -1,73 +1,75 @@
-# Welcome to your Lovable project
+# Musical em Bom Português
 
-## Project info
+Plataforma completa para descobrir e explorar a melhor música brasileira em um só lugar.
 
-**URL**: https://lovable.dev/projects/583a9e86-5f96-43fe-85bb-65ba837ef006
+## 🎵 Sobre o Projeto
 
-## How can I edit this code?
+O **Musical em Bom Português** é uma plataforma web dedicada à música brasileira, oferecendo:
 
-There are several ways of editing your application.
+- 🎼 Catálogo completo de músicas e letras
+- 🎤 Informações sobre artistas brasileiros
+- 🔍 Sistema de busca avançado
+- 🛒 Sistema de compras integrado
+- 👥 Gestão de usuários e perfis
+- 📱 Interface responsiva e moderna
 
-**Use Lovable**
+## 🚀 Tecnologias Utilizadas
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/583a9e86-5f96-43fe-85bb-65ba837ef006) and start prompting.
+- **Frontend**: React 18 + TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Build Tool**: Vite
+- **Backend**: Supabase (Database + Auth)
+- **Deployment**: Cloudflare Pages
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Desenvolvimento Local
 
-**Use your preferred IDE**
+### Pré-requisitos
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (versão 18 ou superior)
+- npm ou yarn
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Instalação
 
-Follow these steps:
+```bash
+# Clone o repositório
+git clone [URL_DO_REPOSITORIO]
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Entre no diretório
+cd musical-em-bom-portugues
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Instale as dependências
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+O projeto estará disponível em `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📁 Estrutura do Projeto
 
-**Use GitHub Codespaces**
+```
+src/
+├── components/          # Componentes reutilizáveis
+├── pages/              # Páginas da aplicação
+├── contexts/           # Contextos React (Auth, etc.)
+├── hooks/              # Hooks customizados
+├── services/           # Serviços e APIs
+├── integrations/       # Integrações (Supabase)
+└── utils/              # Utilitários
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🔧 Scripts Disponíveis
 
-## What technologies are used for this project?
+- `npm run dev` - Inicia o servidor de desenvolvimento
+- `npm run build` - Gera build de produção
+- `npm run preview` - Visualiza o build de produção
+- `npm run lint` - Executa o linter
 
-This project is built with:
+## 🚀 Deploy
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+O projeto está configurado para deploy automático no Cloudflare Pages.
 
-## How can I deploy this project?
+## 📄 Licença
 
-Simply open [Lovable](https://lovable.dev/projects/583a9e86-5f96-43fe-85bb-65ba837ef006) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Este projeto é propriedade do Musical em Bom Português.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import MusicCard from "./MusicCard";
 import FilterBar from "./FilterBar";
 import { getVersesPaginated } from '../services/versesService';
@@ -42,11 +42,7 @@ const ensureVerseData = (verse: any) => {
     title: verse.titulo_original || verse.titulo_pt_br || 'Título não informado',
     artist: verse.musical || 'Artista não informado',
     image: verse.url_imagem && verse.url_imagem !== 'null' ? verse.url_imagem : '/musical-generic.svg',
-<<<<<<< HEAD
     price: verse.valor || 0, // Valor direto do banco
-=======
-    price: verse.valor ? verse.valor / 100 : 0, // Converter de centavos para reais
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
     views: verse.visualizacoes || 0,
     category: getCategoryFromVerse(verse),
     classificacoes: verse.classificacao_vocal_alt
@@ -73,12 +69,6 @@ const MusicGrid = () => {
       setIsLoading(true);
       setError(null);
       
-<<<<<<< HEAD
-=======
-      // Limpa cache antigo para evitar problemas de navegação
-      clearCache(['musicgrid-verses']);
-      
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
       console.log('Iniciando busca de versos...');
       const result = await getVersesPaginated(1, ITEMS_PER_PAGE);
       console.log(`Versos recebidos: ${result.data.length} de ${result.total}`);
@@ -101,7 +91,7 @@ const MusicGrid = () => {
     }
   }, []);
 
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMore = async () => {
     if (isLoadingMore || !hasMoreData) return;
     
     try {
@@ -123,79 +113,74 @@ const MusicGrid = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMoreData, currentPage]);
+  };
 
   // Funções de filtro
-  const handleCategoryChange = useCallback((category: string) => {
+  const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
-  }, []);
+  };
 
-  const handleStyleChange = useCallback((style: string) => {
+  const handleStyleChange = (style: string) => {
     setSelectedStyle(style);
-  }, []);
+  };
 
-  const handleSortChange = useCallback((sort: string) => {
+  const handleSortChange = (sort: string) => {
     setSelectedSort(sort);
-  }, []);
+  };
 
-  const handleClearFilters = useCallback(() => {
+  const handleClearFilters = () => {
     setSelectedCategory('all');
     setSelectedStyle('all-styles');
     setSelectedSort('popular');
-  }, []);
+  };
 
-  // Filtrar e ordenar versos
-  const filteredAndSortedVerses = useMemo(() => {
-    let filtered = [...verses];
+  // Filtrar e ordenar versos sem memoização
+  let filteredAndSortedVerses = [...verses];
 
-    // Filtrar por categoria
-    if (selectedCategory !== 'all') {
-      const categoryName = selectedCategory.replace(/-/g, ' ');
-      filtered = filtered.filter(verse => {
-        const verseCategory = getCategoryFromVerse(verse).toLowerCase();
-        return verseCategory.includes(categoryName.toLowerCase());
-      });
-    }
+  // Filtrar por categoria
+  if (selectedCategory !== 'all') {
+    const categoryName = selectedCategory.replace(/-/g, ' ');
+    filteredAndSortedVerses = filteredAndSortedVerses.filter(verse => {
+      const verseCategory = getCategoryFromVerse(verse).toLowerCase();
+      return verseCategory.includes(categoryName.toLowerCase());
+    });
+  }
 
-    // Filtrar por estilo
-    if (selectedStyle !== 'all-styles') {
-      const styleName = selectedStyle.replace(/-/g, ' ');
-      filtered = filtered.filter(verse => {
-        if (verse.estilo && Array.isArray(verse.estilo) && verse.estilo.length > 0) {
-          return verse.estilo.some(style => 
-            style.toLowerCase().includes(styleName.toLowerCase())
-          );
-        }
-        return false;
-      });
-    }
+  // Filtrar por estilo
+  if (selectedStyle !== 'all-styles') {
+    const styleName = selectedStyle.replace(/-/g, ' ');
+    filteredAndSortedVerses = filteredAndSortedVerses.filter(verse => {
+      if (verse.estilo && Array.isArray(verse.estilo) && verse.estilo.length > 0) {
+        return verse.estilo.some(style => 
+          style.toLowerCase().includes(styleName.toLowerCase())
+        );
+      }
+      return false;
+    });
+  }
 
-    // Ordenar
-    switch (selectedSort) {
-      case 'mais-recentes':
-        filtered.sort((a, b) => new Date(b.criada_em || '').getTime() - new Date(a.criada_em || '').getTime());
-        break;
-      case 'a-z':
-        filtered.sort((a, b) => (a.titulo_pt_br || '').localeCompare(b.titulo_pt_br || ''));
-        break;
-      case 'z-a':
-        filtered.sort((a, b) => (b.titulo_pt_br || '').localeCompare(a.titulo_pt_br || ''));
-        break;
-      case 'por-artista':
-        filtered.sort((a, b) => (a.musical || '').localeCompare(b.musical || ''));
-        break;
-      case 'mais-populares':
-      default:
-        filtered.sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0));
-        break;
-    }
+  // Ordenar
+  switch (selectedSort) {
+    case 'mais-recentes':
+      filteredAndSortedVerses.sort((a, b) => new Date(b.criada_em || '').getTime() - new Date(a.criada_em || '').getTime());
+      break;
+    case 'a-z':
+      filteredAndSortedVerses.sort((a, b) => (a.titulo_pt_br || '').localeCompare(b.titulo_pt_br || ''));
+      break;
+    case 'z-a':
+      filteredAndSortedVerses.sort((a, b) => (b.titulo_pt_br || '').localeCompare(a.titulo_pt_br || ''));
+      break;
+    case 'por-artista':
+      filteredAndSortedVerses.sort((a, b) => (a.musical || '').localeCompare(b.musical || ''));
+      break;
+    case 'mais-populares':
+    default:
+      filteredAndSortedVerses.sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0));
+      break;
+  }
 
-    return filtered;
-  }, [verses, selectedCategory, selectedStyle, selectedSort]);
-
-  const displayedVerses = useMemo(() => filteredAndSortedVerses, [filteredAndSortedVerses]);
-
-  const hasMoreVerses = useMemo(() => hasMoreData, [hasMoreData]);
+  const displayedVerses = filteredAndSortedVerses;
+  const hasMoreVerses = hasMoreData;
 
   if (isLoading) {
     return (

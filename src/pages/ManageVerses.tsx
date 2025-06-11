@@ -1,48 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Eye, Music, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Plus, Edit, Trash2, Eye, Music, AlertTriangle, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import { Link, useNavigate } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
-import { getVersesPaginated, deleteVerse, getCategories, generateSlug } from '../services/versesService';
+import { getVersesPaginated, deleteVerse, deleteMultipleVerses, deleteAllVerses, getCategories, generateSlug } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
-import { toast } from '@/components/ui/sonner';
+import { useToast } from '@/hooks/use-toast';
 
-type Verse = Database['public']['Tables']['versoes']['Row'];
+// Interface específica para Verse com tipos mais flexíveis
+interface Verse {
+  id: number;
+  titulo_original: string;
+  titulo_pt_br: string;
+  musical: string;
+  estilo: string[] | null;
+  status: string | null;
+  visualizacoes: number | null;
+  criada_em: string | null;
+  url_imagem: string | null;
+  ano_gravacao: number | null;
+  atualizada_em: string | null;
+  audio_instrumental: string[] | null;
+  [key: string]: any; // Para permitir propriedades adicionais
+}
 
-const ManageVerses = () => {
+const ManageVerses: React.FC = () => {
+  const { user, profile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { user, profile, loading } = useAuth();
+  const { toast } = useToast();
 
+  // Estados do componente
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [sortBy, setSortBy] = useState('titulo_pt_br');
+  const [verses, setVerses] = useState<Verse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalVerses, setTotalVerses] = useState(0);
+  const [hasMoreData, setHasMoreData] = useState(true);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [verseToDelete, setVerseToDelete] = useState<Verse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedVerses, setSelectedVerses] = useState<Set<number>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const ITEMS_PER_PAGE = 50;
 
-  // Debug: Log do estado atual
-  console.log('🔍 ManageVerses - Estado atual:', {
-    loading,
+  console.log('🔍 ManageVerses - Estado da autenticação:', {
     user: user?.email,
     profile: profile?.role,
-    hasUser: !!user,
-    hasProfile: !!profile
+    authLoading
   });
 
-  // Aguardar carregamento antes de verificar permissões
-  if (loading) {
-    console.log('⏳ ManageVerses - Aguardando carregamento...');
+  if (authLoading) {
+    console.log('⏳ ManageVerses - Carregando autenticação...');
     return (
       <CartProvider>
         <div className="min-h-screen bg-gray-50">
-          <Header />
           <div className="container mx-auto px-4 py-8">
             <div className="text-center">
               <p className="text-gray-600">Carregando...</p>
             </div>
           </div>
-          <Footer />
         </div>
       </CartProvider>
     );
@@ -62,7 +91,6 @@ const ManageVerses = () => {
     return (
       <CartProvider>
         <div className="min-h-screen bg-gray-50">
-          <Header />
           <div className="container mx-auto px-4 py-8">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">Acesso Negado</h1>
@@ -75,28 +103,12 @@ const ManageVerses = () => {
               </Button>
             </div>
           </div>
-          <Footer />
         </div>
       </CartProvider>
     );
   }
 
   console.log('✅ ManageVerses - Acesso autorizado para admin');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('titulo_pt_br');
-  const [verses, setVerses] = useState<Verse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalVerses, setTotalVerses] = useState(0);
-  const [hasMoreData, setHasMoreData] = useState(true);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [verseToDelete, setVerseToDelete] = useState<Verse | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -188,13 +200,38 @@ const ManageVerses = () => {
         // Atualizar a lista de versos removendo o verso deletado
         setVerses(prev => prev.filter(v => v.id !== verseToDelete.id));
         setTotalVerses(prev => prev - 1);
-        toast.success('Verso excluído com sucesso!');
+        toast({
+          title: "Sucesso",
+          description: "Verso excluído com sucesso!"
+        });
       } else {
-        toast.error('Erro ao excluir verso. Tente novamente.');
+        toast({
+          title: "Erro",
+          description: "Erro ao excluir verso. Tente novamente.",
+          variant: "destructive"
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao excluir verso:', error);
-      toast.error('Erro ao excluir verso. Tente novamente.');
+      if (error.message?.includes('Usuário não autenticado')) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para excluir versos.",
+          variant: "destructive"
+        });
+      } else if (error.message?.includes('Permissão negada') || error.message?.includes('admin')) {
+        toast({
+          title: "Erro",
+          description: "Apenas administradores podem excluir versos.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao excluir verso. Tente novamente.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
@@ -202,10 +239,147 @@ const ManageVerses = () => {
     }
   };
 
+  // Funções de seleção múltipla
+  const handleSelectVerse = (verseId: number) => {
+    const newSelected = new Set(selectedVerses);
+    if (newSelected.has(verseId)) {
+      newSelected.delete(verseId);
+    } else {
+      newSelected.add(verseId);
+    }
+    setSelectedVerses(newSelected);
+    setSelectAll(newSelected.size === verses.length);
+  };
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedVerses(new Set());
+      setSelectAll(false);
+    } else {
+      const allIds = new Set(verses.map(v => v.id));
+      setSelectedVerses(allIds);
+      setSelectAll(true);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedVerses.size === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione pelo menos um verso para deletar.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    try {
+      setIsBulkDeleting(true);
+      const idsToDelete = Array.from(selectedVerses);
+      const success = await deleteMultipleVerses(idsToDelete);
+      
+      if (success) {
+        setVerses(prev => prev.filter(v => !selectedVerses.has(v.id)));
+        setTotalVerses(prev => prev - selectedVerses.size);
+        setSelectedVerses(new Set());
+        setSelectAll(false);
+        toast({
+          title: "Sucesso",
+          description: `${idsToDelete.length} versos excluídos com sucesso!`
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao excluir versos selecionados. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir versos:', error);
+      if (error.message?.includes('Usuário não autenticado')) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para excluir versos.",
+          variant: "destructive"
+        });
+      } else if (error.message?.includes('Permissão negada') || error.message?.includes('admin')) {
+        toast({
+          title: "Erro",
+          description: "Apenas administradores podem excluir versos.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao excluir versos selecionados. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteDialogOpen(false);
+    }
+  };
+
+  const handleDeleteAll = () => {
+    setDeleteAllDialogOpen(true);
+  };
+
+  const confirmDeleteAll = async () => {
+    try {
+      setIsBulkDeleting(true);
+      const success = await deleteAllVerses();
+      
+      if (success) {
+        setVerses([]);
+        setTotalVerses(0);
+        setSelectedVerses(new Set());
+        setSelectAll(false);
+        setHasMoreData(false);
+        setCurrentPage(1);
+        toast({
+          title: "Sucesso",
+          description: "Todos os versos foram excluídos com sucesso!"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao excluir todos os versos. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir todos os versos:', error);
+      if (error.message?.includes('Usuário não autenticado')) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para excluir versos.",
+          variant: "destructive"
+        });
+      } else if (error.message?.includes('Permissão negada') || error.message?.includes('admin')) {
+        toast({
+          title: "Erro",
+          description: "Apenas administradores podem excluir versos.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao excluir todos os versos. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsBulkDeleting(false);
+      setDeleteAllDialogOpen(false);
+    }
+  };
+
   return (
     <CartProvider>
       <div className="min-h-screen bg-gray-50">
-        <Header />
         
         <main className="container mx-auto px-4 sm:px-6 py-8">
           {/* Cabeçalho da Página */}
@@ -221,6 +395,76 @@ const ManageVerses = () => {
               </Button>
             </Link>
           </div>
+
+          {/* Ações em Massa */}
+          {selectedVerses.size > 0 && (
+            <Card className="p-4 mb-6 border-0 shadow-sm bg-blue-50">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium text-blue-700">
+                    {selectedVerses.size} verso(s) selecionado(s)
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedVerses(new Set());
+                      setSelectAll(false);
+                    }}
+                    className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                  >
+                    Limpar seleção
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    disabled={isBulkDeleting}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Deletar Selecionados
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Botões de Ação Global */}
+          <Card className="p-4 mb-6 border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="border-gray-300"
+                >
+                  {selectAll ? (
+                    <CheckSquare className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Square className="w-4 h-4 mr-2" />
+                  )}
+                  {selectAll ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Total: {totalVerses} versos
+                </span>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAll}
+                disabled={isBulkDeleting || verses.length === 0}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Deletar Todos os Versos
+              </Button>
+            </div>
+          </Card>
 
           {/* Filtros e Busca */}
           <Card className="p-6 mb-8 border-0 shadow-sm">
@@ -334,6 +578,19 @@ const ManageVerses = () => {
                   {sortedVerses.map((verse) => (
                     <div key={verse.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                       <div className="flex items-center space-x-4">
+                        {/* Checkbox de Seleção */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSelectVerse(verse.id)}
+                          className="p-1 h-auto hover:bg-transparent"
+                        >
+                          {selectedVerses.has(verse.id) ? (
+                            <CheckSquare className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400 hover:text-blue-600" />
+                          )}
+                        </Button>
                         {/* Imagem do Verso */}
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-primary/10 to-purple-100 flex items-center justify-center">
                           {verse.url_imagem ? (
@@ -417,8 +674,6 @@ const ManageVerses = () => {
             )}
           </Card>
         </main>
-
-        <Footer />
         
         {/* Diálogo de Confirmação de Exclusão */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -458,6 +713,112 @@ const ManageVerses = () => {
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
                     Excluir
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Diálogo de Confirmação de Exclusão em Massa */}
+        <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                <span>Confirmar Exclusão em Massa</span>
+              </DialogTitle>
+              <DialogDescription className="text-left">
+                Tem certeza que deseja excluir <strong>{selectedVerses.size} verso(s)</strong> selecionado(s)?
+                <br /><br />
+                Esta ação não pode ser desfeita. Os versos serão permanentemente removidos do banco de dados.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setBulkDeleteDialogOpen(false)}
+                disabled={isBulkDeleting}
+                className="rounded-full"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmBulkDelete}
+                disabled={isBulkDeleting}
+                className="rounded-full"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir {selectedVerses.size} Verso(s)
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Diálogo de Confirmação de Exclusão de Todos os Versos */}
+        <Dialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                <span>Confirmar Exclusão de Todos os Versos</span>
+              </DialogTitle>
+              <DialogDescription className="text-left">
+                <strong>ATENÇÃO:</strong> Tem certeza que deseja excluir <strong>TODOS os {totalVerses} versos</strong> do banco de dados?
+                <br /><br />
+                Esta ação é <strong>IRREVERSÍVEL</strong> e removerá permanentemente todos os versos, incluindo suas imagens, áudios e dados associados.
+                <br /><br />
+                Digite <strong>"CONFIRMAR"</strong> para prosseguir:
+              </DialogDescription>
+            </DialogHeader>
+            <div className="px-6 pb-4">
+              <input
+                type="text"
+                placeholder="Digite CONFIRMAR"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                onChange={(e) => {
+                  const confirmButton = document.getElementById('confirm-delete-all');
+                  if (confirmButton) {
+                    confirmButton.disabled = e.target.value !== 'CONFIRMAR' || isBulkDeleting;
+                  }
+                }}
+              />
+            </div>
+            <DialogFooter className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteAllDialogOpen(false)}
+                disabled={isBulkDeleting}
+                className="rounded-full"
+              >
+                Cancelar
+              </Button>
+              <Button
+                id="confirm-delete-all"
+                variant="destructive"
+                onClick={confirmDeleteAll}
+                disabled={true}
+                className="rounded-full"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Excluindo Todos...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir Todos os Versos
                   </>
                 )}
               </Button>

@@ -2,11 +2,7 @@
 import React, { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
-import { Menu, Home, Music, List, Users, LogOut, User } from "lucide-react";
-=======
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
+import { Menu, Home, Music, List, Users, LogOut, User, Package } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -16,22 +12,21 @@ const MobileMenu = () => {
   const { user, signOut, profile, loading } = useAuth();
 
   // Definir itens do menu - visíveis apenas para usuários logados
-  const menuItems = React.useMemo(() => {
-    const baseItems = [
-      { icon: Home, label: "Início", href: "/" },
-      { icon: Music, label: "Músicas", href: "/music" }
-    ];
+  const baseItems = [
+    { icon: Home, label: "Início", href: "/" },
+    { icon: Music, label: "Músicas", href: "/music" },
+    { icon: Package, label: "Meus Pedidos", href: "/meus-pedidos" }
+  ];
 
-    // Adicionar itens de gerenciamento apenas para admins
-    if (profile?.role === 'admin') {
-      baseItems.push(
-        { icon: List, label: "Gerenciar Versos", href: "/manage-verses" },
-        { icon: Users, label: "Gerenciar Usuários", href: "/manage-users" }
-      );
-    }
+  // Adicionar itens de gerenciamento apenas para admins
+  if (profile?.role === 'admin') {
+    baseItems.push(
+      { icon: List, label: "Gerenciar Versos", href: "/manage-verses" },
+      { icon: Users, label: "Gerenciar Usuários", href: "/manage-users" }
+    );
+  }
 
-    return baseItems;
-  }, [profile?.role]);
+  const menuItems = baseItems;
 
   const handleSignOut = async () => {
     await signOut();
@@ -84,11 +79,10 @@ const MobileMenu = () => {
                 <div>
                   <p className="font-medium text-gray-900">{profile?.name || 'Usuário'}</p>
                   <p className="text-sm text-gray-500">{user.email}</p>
-                  {profile?.role === 'admin' && (
-                    <span className="inline-block px-2 py-1 text-xs bg-primary text-white rounded-full mt-1">
-                      Administrador
-                    </span>
-                  )}
+                  <span className="inline-block px-2 py-1 text-xs bg-primary text-white rounded-full mt-1">
+                    {profile?.role === 'admin' ? 'Administrador' : 
+                     profile?.role === 'membro' ? 'Membro' : 'Cliente'}
+                  </span>
                 </div>
               </div>
             </div>

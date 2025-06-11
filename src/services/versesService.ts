@@ -26,9 +26,6 @@ export interface VerseFormData {
   imageFile?: File;
   imageUrl?: string;
   audioOriginal?: string;
-  
-  // Versões irmãs
-  versoes_irmas?: number[];
 }
 
 // Função para processar e formatar valores monetários
@@ -135,10 +132,6 @@ export const uploadImage = async (file: File, fileName: string): Promise<string 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('capas')
       .upload(uniqueFileName, resizedFile, {
-<<<<<<< HEAD
-=======
-        cacheControl: '3600',
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
         upsert: true,
         contentType: 'image/jpeg'
       });
@@ -238,21 +231,15 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 
     // Processar valor monetário corretamente
     const processedValue = processMonetaryValue(formData.valor);
-<<<<<<< HEAD
     
     console.log('💰 Valor processado:', { original: formData.valor, processed: processedValue });
-=======
-    const valueInCents = Math.round(processedValue * 100); // Converter para centavos
-    
-    console.log('💰 Valor processado:', { original: formData.valor, processed: processedValue, inCents: valueInCents });
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 
     // Usar o titulo_original fornecido ou o titulo_pt_br como fallback
     const tituloOriginal = formData.titulo_original || formData.titulo_pt_br;
     
     const verseData: VerseInsert = {
       // Campos obrigatórios
-      letra_original: formData.letraOriginal || null,
+      letra_original: formData.letraOriginal || '',
       musical: formData.musical,
       titulo_original: tituloOriginal,
       titulo_pt_br: formData.titulo_pt_br,
@@ -266,19 +253,12 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
       
       // Informações do produto
       estilo: formData.estilo ? [formData.estilo] : null,
-<<<<<<< HEAD
       valor: processedValue, // Valor processado
-=======
-      valor: valueInCents, // Valor em centavos
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
       
       // Conteúdo e mídia
       conteudo: formData.conteudo || null,
       url_imagem: imageUrl || null,
       audio_original: formData.audioOriginal || null,
-      
-      // Versões irmãs
-      versoes_irmas: formData.versoes_irmas || null,
       
       // Valores padrão
       status: 'active',
@@ -288,11 +268,7 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
 
     console.log('📝 Dados finais para inserção:', {
       ...verseData,
-<<<<<<< HEAD
       valor: `${processedValue} reais`,
-=======
-      valor: `${processedValue} reais (${valueInCents} centavos)`,
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
       url_imagem: imageUrl
     });
     
@@ -324,7 +300,6 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
   }
 };
 
-<<<<<<< HEAD
 // Função para buscar os últimos versos cadastrados (para seção "Adicionados Recentemente")
 export const getRecentVerses = async (limit: number = 3): Promise<any[]> => {
   try {
@@ -354,16 +329,14 @@ export const getRecentVerses = async (limit: number = 3): Promise<any[]> => {
   }
 };
 
-=======
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
-// Função para buscar versos com paginação
+// Função para buscar versos com paginação (sem cache)
 export const getVersesPaginated = async (page: number = 1, limit: number = 50): Promise<{ data: any[], total: number, hasMore: boolean }> => {
   try {
-    console.log(`📄 Buscando versos - Página: ${page}, Limite: ${limit}`);
+    console.log(`📄 Buscando versos (dados frescos) - Página: ${page}, Limite: ${limit}`);
     
     const offset = (page - 1) * limit;
     
-    // Primeiro, buscar o total de registros
+    // Primeiro, buscar o total de registros (forçando dados frescos)
     const { count, error: countError } = await supabase
       .from('versoes')
       .select('*', { count: 'exact', head: true });
@@ -374,9 +347,9 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
     }
     
     const totalRecords = count || 0;
-    console.log(`📊 Total de registros na base: ${totalRecords}`);
+    console.log(`📊 Total de registros na base (dados frescos): ${totalRecords}`);
     
-    // Buscar os dados paginados
+    // Buscar os dados paginados (forçando dados frescos)
     const { data, error } = await supabase
       .from('versoes')
       .select('*')
@@ -387,6 +360,8 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
       console.error('❌ Erro ao buscar versos paginados:', error);
       throw error;
     }
+    
+    console.log(`🔍 Dados brutos recebidos do Supabase:`, data?.length || 0, 'registros');
     
     const processedData = data ? processVerseData(data) : [];
     const hasMore = offset + limit < totalRecords;
@@ -444,13 +419,8 @@ const processVerseData = (data: any[]) => {
       category = verso.estilo[0];
     }
     
-<<<<<<< HEAD
     // Usar valor direto do banco
     const priceInReais = verso.valor || 0;
-=======
-    // Converter valor de centavos para reais
-    const priceInReais = verso.valor ? verso.valor / 100 : 0;
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
     
     // Garantir que a URL da imagem seja válida
     let imageUrl = '/musical-generic.svg';
@@ -788,20 +758,203 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
 // Função para deletar um verso
 export const deleteVerse = async (id: number): Promise<boolean> => {
   try {
+    console.log('🗑️ Deletando verso com ID:', id);
+    
+    // Verificar se o usuário está autenticado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      throw new Error('Você precisa estar logado para deletar versos.');
+    }
+
+    // Verificar se o usuário tem perfil de admin
+    console.log('🔍 Verificando perfil do usuário:', user.id);
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    console.log('📋 Resultado da consulta do perfil:', { profile, profileError });
+
+    if (profileError) {
+      console.error('❌ Erro ao buscar perfil:', profileError);
+      throw new Error('Erro ao verificar permissões do usuário.');
+    }
+
+    if (!profile || profile.role !== 'admin') {
+      console.error('❌ Usuário sem permissão de admin. Profile:', profile);
+      console.error('❌ Role encontrado:', profile?.role, 'Esperado: admin');
+      throw new Error('Apenas administradores podem deletar versos.');
+    }
+
+    console.log('✅ Usuário confirmado como admin:', profile.role);
+    
     const { error } = await supabase
       .from('versoes')
-      .update({ status: 'inactive' })
+      .delete()
       .eq('id', id);
 
     if (error) {
       console.error('❌ Erro ao deletar verso:', error);
-      return false;
+      if (error.code === '42501' || error.message?.includes('RLS') || error.message?.includes('policy')) {
+        throw new Error('Erro de permissão: Você precisa ter um perfil de administrador para deletar versos. Faça logout e login novamente.');
+      }
+      throw new Error(`Erro ao deletar verso: ${error.message}`);
     }
 
+    console.log('✅ Verso deletado com sucesso');
     return true;
   } catch (error) {
     console.error('❌ Erro ao deletar verso:', error);
-    return false;
+    throw error;
+  }
+};
+
+// Função para deletar múltiplos versos
+export const deleteMultipleVerses = async (ids: number[]): Promise<boolean> => {
+  try {
+    console.log('🗑️ Deletando múltiplos versos:', ids);
+    
+    // Verificar se o usuário está autenticado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      throw new Error('Você precisa estar logado para deletar versos.');
+    }
+
+    // Verificar se o usuário tem perfil de admin
+    console.log('🔍 Verificando perfil do usuário:', user.id);
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    console.log('📋 Resultado da consulta do perfil:', { profile, profileError });
+
+    if (profileError) {
+      console.error('❌ Erro ao buscar perfil:', profileError);
+      throw new Error('Erro ao verificar permissões do usuário.');
+    }
+
+    if (!profile || profile.role !== 'admin') {
+      console.error('❌ Usuário sem permissão de admin. Profile:', profile);
+      console.error('❌ Role encontrado:', profile?.role, 'Esperado: admin');
+      throw new Error('Apenas administradores podem deletar versos.');
+    }
+
+    console.log('✅ Usuário confirmado como admin:', profile.role);
+    
+    // Deletar um por vez para evitar problemas de RLS
+    const errors = [];
+    for (const id of ids) {
+      try {
+        const { error } = await supabase
+          .from('versoes')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          console.error(`❌ Erro ao deletar verso ${id}:`, error);
+          errors.push(`Verso ${id}: ${error.message}`);
+        }
+      } catch (err) {
+        console.error(`❌ Erro geral ao deletar verso ${id}:`, err);
+        errors.push(`Verso ${id}: ${err}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Alguns versos não puderam ser deletados: ${errors.join(', ')}`);
+    }
+
+    console.log('✅ Múltiplos versos deletados com sucesso');
+    return true;
+  } catch (error) {
+    console.error('❌ Erro ao deletar múltiplos versos:', error);
+    throw error;
+  }
+};
+
+// Função para deletar todos os versos
+export const deleteAllVerses = async (): Promise<boolean> => {
+  try {
+    console.log('🗑️ Deletando todos os versos');
+    
+    // Verificar se o usuário está autenticado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      throw new Error('Você precisa estar logado para deletar versos.');
+    }
+
+    // Verificar se o usuário tem perfil de admin
+    console.log('🔍 Verificando perfil do usuário:', user.id);
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    console.log('📋 Resultado da consulta do perfil:', { profile, profileError });
+
+    if (profileError) {
+      console.error('❌ Erro ao buscar perfil:', profileError);
+      throw new Error('Erro ao verificar permissões do usuário.');
+    }
+
+    if (!profile || profile.role !== 'admin') {
+      console.error('❌ Usuário sem permissão de admin. Profile:', profile);
+      console.error('❌ Role encontrado:', profile?.role, 'Esperado: admin');
+      throw new Error('Apenas administradores podem deletar versos.');
+    }
+
+    console.log('✅ Usuário confirmado como admin:', profile.role);
+    
+    // Primeiro buscar todos os IDs
+    const { data: verses, error: fetchError } = await supabase
+      .from('versoes')
+      .select('id');
+
+    if (fetchError) {
+      console.error('❌ Erro ao buscar versos para deletar:', fetchError);
+      throw new Error(`Erro ao buscar versos: ${fetchError.message}`);
+    }
+
+    if (!verses || verses.length === 0) {
+      console.log('✅ Nenhum verso para deletar');
+      return true;
+    }
+
+    // Deletar um por vez para evitar problemas de RLS
+    const errors = [];
+    for (const verse of verses) {
+      try {
+        const { error } = await supabase
+          .from('versoes')
+          .delete()
+          .eq('id', verse.id);
+
+        if (error) {
+          console.error(`❌ Erro ao deletar verso ${verse.id}:`, error);
+          errors.push(`Verso ${verse.id}: ${error.message}`);
+        }
+      } catch (err) {
+        console.error(`❌ Erro geral ao deletar verso ${verse.id}:`, err);
+        errors.push(`Verso ${verse.id}: ${err}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Alguns versos não puderam ser deletados: ${errors.join(', ')}`);
+    }
+
+    console.log('✅ Todos os versos deletados com sucesso');
+    return true;
+  } catch (error) {
+    console.error('❌ Erro ao deletar todos os versos:', error);
+    throw error;
   }
 };
 
@@ -868,7 +1021,6 @@ export const getVersesByArtist = async (musical: string): Promise<Verse[]> => {
     return [];
   }
 };
-<<<<<<< HEAD
 
 // Função para buscar versos por IDs (versões irmãs)
 export const getVersesByIds = async (ids: number[]): Promise<Verse[]> => {
@@ -903,7 +1055,7 @@ export const searchVersesByTitle = async (searchTerm: string): Promise<Verse[]> 
       .ilike('titulo_original', `%${searchTerm}%`)
       .eq('status', 'active')
       .order('titulo_original')
-      .limit(20);
+      .limit(20)
 
     if (error) {
       console.error('❌ Erro ao buscar versos por título:', error);
@@ -917,8 +1069,6 @@ export const searchVersesByTitle = async (searchTerm: string): Promise<Verse[]> 
     throw error;
   }
 };
-=======
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 
 // Função para buscar categorias únicas
 export const getCategories = async (): Promise<string[]> => {
@@ -943,5 +1093,96 @@ export const getCategories = async (): Promise<string[]> => {
   } catch (error) {
     console.error('Erro ao buscar categorias:', error);
     return [];
+  }
+};
+
+// Função para buscar todos os usuários (apenas para admins)
+export const getAllUsers = async () => {
+  try {
+    console.log('🔍 Buscando todos os usuários...');
+    
+    const { data, error } = await supabase
+      .rpc('get_all_profiles_admin');
+
+    if (error) {
+      console.error('❌ Erro ao buscar usuários:', error);
+      return [];
+    }
+
+    console.log(`✅ ${data?.length || 0} usuários encontrados`);
+    return data || [];
+  } catch (error) {
+    console.error('❌ Erro geral ao buscar usuários:', error);
+    return [];
+  }
+};
+
+// Função para atualizar o role de um usuário
+export const updateUserRole = async (userId: string, newRole: string) => {
+  try {
+    console.log(`🔄 Atualizando role do usuário ${userId} para ${newRole}...`);
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId)
+      .select();
+
+    if (error) {
+      console.error('❌ Erro ao atualizar role:', error);
+      throw error;
+    }
+
+    console.log('✅ Role atualizado com sucesso');
+    return data;
+  } catch (error) {
+    console.error('❌ Erro geral ao atualizar role:', error);
+    throw error;
+  }
+};
+
+// Função para atualizar email de um usuário
+export const updateUserEmail = async (userId: string, newEmail: string) => {
+  try {
+    console.log(`📧 Atualizando email do usuário ${userId}...`);
+    
+    const { data, error } = await supabase.auth.admin.updateUserById(
+      userId,
+      { email: newEmail }
+    );
+
+    if (error) {
+      console.error('❌ Erro ao atualizar email:', error);
+      throw error;
+    }
+
+    console.log('✅ Email atualizado com sucesso');
+    return data;
+  } catch (error) {
+    console.error('❌ Erro geral ao atualizar email:', error);
+    throw error;
+  }
+};
+
+// Função para atualizar senha de um usuário
+export const updateUserPassword = async (userId: string, newPassword: string) => {
+  try {
+    console.log(`🔐 Atualizando senha do usuário ${userId}...`);
+    
+    const { data, error } = await supabase.auth.admin.updateUserById(
+      userId,
+      { password: newPassword }
+    );
+
+    if (error) {
+      console.error('❌ Erro ao atualizar senha:', error);
+      throw error;
+    }
+
+    console.log('✅ Senha atualizada com sucesso');
+    return data;
+  } catch (error) {
+    console.error('❌ Erro geral ao atualizar senha:', error);
+    throw error;
   }
 };

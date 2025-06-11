@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, User, ShoppingCart } from "lucide-react";
+import { Search, User, ShoppingCart, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -90,13 +90,13 @@ const Header = () => {
               <MobileMenu />
               
               {/* Logo - Aumentado ainda mais */}
-              <div className="flex items-center space-x-2 flex-shrink-0 max-h-32 overflow-hidden">
+              <Link to="/" className="flex items-center space-x-2 flex-shrink-0 max-h-32 overflow-hidden hover:opacity-80 transition-opacity duration-200">
                 <img 
                   src="/lovable-uploads/6d8f4102-632c-4f6f-811d-b38edad74c0c.png" 
                   alt="Musical em bom Português" 
-                  className="h-36 sm:h-40 md:h-44 lg:h-48 w-auto"
+                  className="h-36 sm:h-40 md:h-44 lg:h-48 w-auto cursor-pointer"
                 />
-              </div>
+              </Link>
             </div>
 
             {/* Barra de Busca Central - Hidden on mobile, visible on tablet+ */}
@@ -136,6 +136,16 @@ const Header = () => {
 
             {/* Menu do Usuário e Carrinho */}
             <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Meus Pedidos - Visível apenas para usuários logados */}
+              {user && (
+                <Link to="/meus-pedidos">
+                  <Button variant="ghost" size="sm" className="rounded-full">
+                    <Package className="w-5 h-5" />
+                    <span className="ml-2 hidden sm:inline">Meus Pedidos</span>
+                  </Button>
+                </Link>
+              )}
+              
               {/* Carrinho */}
               <Button 
                 variant="ghost" 

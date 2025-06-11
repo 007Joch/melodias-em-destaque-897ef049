@@ -11,27 +11,80 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          cpf: string | null
           created_at: string | null
+          endereco: Json | null
           id: string
           name: string
           role: string | null
+          telefone: string | null
           updated_at: string | null
         }
         Insert: {
+          cpf?: string | null
           created_at?: string | null
+          endereco?: Json | null
           id: string
           name: string
           role?: string | null
+          telefone?: string | null
           updated_at?: string | null
         }
         Update: {
+          cpf?: string | null
           created_at?: string | null
+          endereco?: Json | null
           id?: string
           name?: string
           role?: string | null
+          telefone?: string | null
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_purchases: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          payment_id: string | null
+          payment_method: string
+          payment_status: string
+          updated_at: string | null
+          user_id: string
+          verse_id: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_method: string
+          payment_status?: string
+          updated_at?: string | null
+          user_id: string
+          verse_id: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_method?: string
+          payment_status?: string
+          updated_at?: string | null
+          user_id?: string
+          verse_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_purchases_verse_id_fkey"
+            columns: ["verse_id"]
+            isOneToOne: false
+            referencedRelation: "versoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       versoes: {
         Row: {
@@ -398,7 +451,63 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_basic_profile: {
+        Args: { user_id: string; user_name: string }
+        Returns: {
+          cpf: string | null
+          created_at: string | null
+          endereco: Json | null
+          id: string
+          name: string
+          role: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+      }
+      get_all_profiles_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          role: string
+          created_at: string
+          updated_at: string
+          cpf: string
+          telefone: string
+          endereco: Json
+        }[]
+      }
+      get_all_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          email_confirmed_at: string
+          created_at: string
+          updated_at: string
+          last_sign_in_at: string
+          raw_user_meta_data: Json
+          profile_name: string
+          profile_role: string
+          profile_cpf: string
+          profile_telefone: string
+          profile_endereco: string
+          profile_created_at: string
+        }[]
+      }
+      get_user_profile: {
+        Args: { user_id: string }
+        Returns: {
+          cpf: string | null
+          created_at: string | null
+          endereco: Json | null
+          id: string
+          name: string
+          role: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+      }
     }
     Enums: {
       [_ in never]: never
@@ -500,22 +609,18 @@ export type Enums<
     : never
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
+  DefaultSchemaCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends DefaultSchemaCompositeTypeNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof Database[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+> = DefaultSchemaCompositeTypeNameOrOptions extends {
+  schema: keyof Database
+}
+  ? Database[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : DefaultSchemaCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][DefaultSchemaCompositeTypeNameOrOptions]
     : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const

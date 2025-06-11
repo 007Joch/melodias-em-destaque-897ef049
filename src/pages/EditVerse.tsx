@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, Eye, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import ReactQuill from 'react-quill';
@@ -187,7 +187,6 @@ const EditVerse = () => {
     return (
       <CartProvider>
         <div className="min-h-screen bg-gray-50">
-          <Header />
           <main className="container mx-auto px-4 sm:px-6 py-8">
             <div className="flex items-center justify-center min-h-[400px]">
               <div className="text-center">
@@ -196,7 +195,6 @@ const EditVerse = () => {
               </div>
             </div>
           </main>
-          <Footer />
         </div>
       </CartProvider>
     );
@@ -205,7 +203,6 @@ const EditVerse = () => {
   return (
     <CartProvider>
       <div className="min-h-screen bg-gray-50">
-        <Header />
         
         <main className="container mx-auto px-4 sm:px-6 py-8">
           {/* Cabeçalho */}
@@ -577,8 +574,6 @@ const EditVerse = () => {
             </div>
           </form>
         </main>
-
-        <Footer />
       </div>
     </CartProvider>
   );

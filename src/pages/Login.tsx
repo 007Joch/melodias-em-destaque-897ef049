@@ -5,11 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
-<<<<<<< HEAD
 import { ArrowLeft, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
-=======
-import { ArrowLeft, Eye, EyeOff } from "lucide-react";
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
@@ -181,24 +177,49 @@ const Login = () => {
 
       setLoading(true);
       try {
-        const userData = {
-          email,
-          name,
-          cpf,
-          telefone,
+        // Verificar todos os campos antes de enviar
+        console.log("🔍 Dados do formulário antes do envio:", {
+          email: email?.trim(),
+          name: name?.trim(),
+          cpf: cpf?.trim(),
+          telefone: telefone?.trim(),
           endereco: {
-            rua,
-            numero,
-            complemento,
-            bairro,
-            cidade,
-            estado,
-            cep
+            rua: rua?.trim(),
+            numero: numero?.trim(),
+            complemento: complemento?.trim(),
+            bairro: bairro?.trim(),
+            cidade: cidade?.trim(),
+            estado: estado?.trim(),
+            cep: cep?.trim()
+          }
+        });
+
+        const userData = {
+          email: email?.trim(),
+          name: name?.trim(),
+          cpf: cpf?.trim(),
+          telefone: telefone?.trim(),
+          endereco: {
+            rua: rua?.trim(),
+            numero: numero?.trim(),
+            complemento: complemento?.trim() || '',
+            bairro: bairro?.trim(),
+            cidade: cidade?.trim(),
+            estado: estado?.trim(),
+            cep: cep?.trim()
           }
         };
         
-        console.log("Tentando cadastrar usuário:", userData);
-        const result = await signUp(email, password, name, userData);
+        console.log("📤 Tentando cadastrar usuário:", userData);
+        console.log("📋 Verificação de campos obrigatórios:", {
+          emailOk: !!userData.email,
+          nameOk: !!userData.name,
+          cpfOk: !!userData.cpf,
+          telefoneOk: !!userData.telefone,
+          enderecoOk: !!(userData.endereco.rua && userData.endereco.numero && userData.endereco.bairro && userData.endereco.cidade && userData.endereco.estado && userData.endereco.cep)
+        });
+        
+        const result = await signUp(email?.trim(), password, name?.trim(), userData);
 
         if (result.error) {
           console.error("Erro na autenticação:", result.error);
@@ -251,7 +272,6 @@ const Login = () => {
             <CardTitle className="text-2xl font-bold text-gray-900">
               {isSignUp ? "Criar conta" : "Entrar na sua conta"}
             </CardTitle>
-<<<<<<< HEAD
             {isSignUp && (
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
@@ -273,8 +293,6 @@ const Login = () => {
                 </div>
               </div>
             )}
-=======
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
           </CardHeader>
           
           <CardContent className="p-6">

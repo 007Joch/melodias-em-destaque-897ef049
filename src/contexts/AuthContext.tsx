@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,44 +16,90 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // AuthProvider component
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Função para carregar perfil do usuário
   const loadUserProfile = async (userId: string) => {
     try {
-      // Usar função RPC para buscar perfil sem problemas de RLS
+      console.log('🔍 [loadUserProfile] Iniciando busca do perfil para usuário:', userId);
+      setProfileLoading(true);
+      
       const { data, error } = await supabase
-        .rpc('get_user_profile', { user_id: userId });
-
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
       if (error) {
-        console.error("❌ Erro ao carregar perfil via RPC:", error);
-        // Se não conseguir carregar, tentar criar
-        await createBasicProfile(userId);
-      } else if (data) {
-        setProfile(data);
-      } else {
-        await createBasicProfile(userId);
+        console.error('❌ [loadUserProfile] Erro ao carregar perfil:', error);
+        
+        // Se o perfil não existe (PGRST116), criar um perfil básico
+        if (error.code === 'PGRST116') {
+          console.log('⚠️ [loadUserProfile] Perfil não encontrado, criando perfil básico...');
+          
+          // Tentar obter informações do usuário para criar o perfil
+          const { data: { user } } = await supabase.auth.getUser();
+          const userName = user?.raw_user_meta_data?.name || user?.email?.split('@')[0] || 'Usuário';
+          
+          try {
+            const newProfile = await createBasicProfile(userId, userName);
+            console.log('✅ [loadUserProfile] Perfil básico criado:', newProfile);
+            setProfile(newProfile);
+            return newProfile;
+          } catch (createError) {
+            console.error('❌ [loadUserProfile] Erro ao criar perfil básico:', createError);
+            // Criar um perfil mínimo local como fallback
+            const fallbackProfile = {
+              id: userId,
+              name: userName,
+              role: 'cliente',
+              created_at: new Date().toISOString()
+            };
+            setProfile(fallbackProfile);
+            return fallbackProfile;
+          }
+        }
+        
+        setProfile(null);
+        throw error;
       }
-    } catch (err) {
-      console.error('💥 Erro inesperado ao carregar perfil:', err);
-      // Fallback: tentar criar perfil básico
-      await createBasicProfile(userId);
+      
+      console.log('✅ [loadUserProfile] Perfil carregado com sucesso:', data);
+      setProfile(data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ [loadUserProfile] Erro geral ao carregar perfil:', error);
+      setProfile(null);
+      throw error;
+    } finally {
+      setProfileLoading(false);
     }
   };
 
-  // Função para criar perfil básico quando há problemas
-  const createBasicProfile = async (userId: string) => {
+  // Função para criar perfil básico quando necessário - APENAS para novos usuários
+  const createBasicProfile = async (userId: string, userName: string) => {
     try {
-      // Obter informações básicas do usuário autenticado
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔧 Verificando se usuário já possui perfil:', userId);
       
-      const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário';
+      // Primeiro, verificar se o perfil já existe
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-      // Usar função RPC para criar perfil sem problemas de RLS
+      if (existingProfile && !checkError) {
+        console.log('✅ Perfil já existe, retornando perfil existente:', existingProfile);
+        return existingProfile;
+      }
+
+      console.log('🔧 Criando perfil básico para usuário:', userId);
+      
       const { data, error } = await supabase
         .rpc('create_basic_profile', { 
           user_id: userId, 
@@ -62,109 +108,203 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('❌ Erro ao criar perfil básico via RPC:', error);
-        setProfile(null);
-      } else {
-        setProfile(data);
+        throw error;
       }
+
+      console.log('✅ Perfil criado via RPC:', data);
+      return data;
     } catch (err) {
       console.error('💥 Erro ao criar perfil básico:', err);
-      setProfile(null);
+      throw err;
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Função simplificada para atualizar estado
-    const updateAuthState = async (session: Session | null) => {
-      if (!mounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await loadUserProfile(session.user.id);
-      } else {
-        setProfile(null);
-      }
-      
-      setLoading(false);
-    };
-
-    // Inicialização simplificada
+    // Inicialização simples e direta
     const initializeAuth = async () => {
       try {
-        // Sempre buscar sessão diretamente do Supabase
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('🔐 Sessão carregada:', session ? 'Ativa' : 'Inativa');
-        await updateAuthState(session);
+        console.log('🔐 Verificando sessão inicial...');
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Erro ao obter sessão:', error);
+        }
+        
+        if (mounted) {
+          if (session) {
+            console.log('✅ Sessão ativa encontrada:', session.user.email);
+            setSession(session);
+            setUser(session.user);
+            
+            // Tentar carregar perfil uma única vez
+            try {
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              
+              if (profileData && !profileError) {
+                console.log('✅ Perfil carregado:', profileData);
+                setProfile(profileData);
+              } else {
+                console.log('⚠️ Perfil não encontrado, usando dados básicos');
+                // Criar perfil básico local sem tentar salvar no banco
+                const basicProfile = {
+                  id: session.user.id,
+                  name: session.user.raw_user_meta_data?.name || session.user.email?.split('@')[0] || 'Usuário',
+                  role: 'cliente',
+                  created_at: new Date().toISOString()
+                };
+                setProfile(basicProfile);
+              }
+            } catch (profileError) {
+              console.log('⚠️ Erro ao carregar perfil, usando fallback');
+              const fallbackProfile = {
+                id: session.user.id,
+                name: session.user.raw_user_meta_data?.name || session.user.email?.split('@')[0] || 'Usuário',
+                role: 'cliente',
+                created_at: new Date().toISOString()
+              };
+              setProfile(fallbackProfile);
+            }
+          } else {
+            console.log('❌ Nenhuma sessão ativa');
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
+          
+          setLoading(false);
+        }
       } catch (error) {
         console.error('❌ Erro ao inicializar auth:', error);
-        setLoading(false);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
       }
     };
 
-    // Listener simplificado para mudanças de autenticação
+    // Listener simplificado
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔔 Auth change:', event);
-        // Usar sempre a sessão fornecida pelo evento
-        await updateAuthState(session);
+      (event, session) => {
+        if (!mounted) return;
+        
+        console.log('🔔 Auth change:', event, session?.user?.email || 'no session');
+        
+        if (event === 'SIGNED_OUT' || !session) {
+          console.log('🚪 Usuário deslogado');
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        } else if (event === 'SIGNED_IN') {
+          console.log('🔑 Usuário logado');
+          setSession(session);
+          setUser(session.user);
+          // Não recarregar perfil aqui para evitar loops
+          setLoading(false);
+        }
       }
     );
 
+    // Inicializar
     initializeAuth();
 
+    // Cleanup
     return () => {
       mounted = false;
-      listener.subscription.unsubscribe();
+      listener?.subscription?.unsubscribe();
     };
   }, []);
 
-  // Função para revalidar sessão quando necessário
+  // Função simplificada para verificar sessão sem causar problemas de cache
   const revalidateSession = async () => {
     try {
+      console.log('🔄 Verificando sessão atual...');
+      
+      // Apenas verificar se a sessão ainda existe, sem forçar recarregamento
       const { data: { session }, error } = await supabase.auth.getSession();
       
-      if (error) {
-        console.error('❌ Erro ao revalidar sessão:', error);
+      if (error || !session) {
+        console.log('❌ Sessão não encontrada');
         return false;
       }
       
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await loadUserProfile(session.user.id);
-      } else {
-        setProfile(null);
-      }
-      
-      return !!session;
+      console.log('✅ Sessão ainda válida');
+      return true;
     } catch (error) {
-      console.error('💥 Erro ao revalidar sessão:', error);
+      console.error('💥 Erro ao verificar sessão:', error);
       return false;
     }
   };
 
 const signIn = async (email: string, password: string) => {
   try {
-    // Tentativa de login
+    console.log('🔑 Tentando fazer login...');
+    
+    // Fazer login
     const result = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
+    if (result.error) {
+      console.error('❌ Erro no login:', result.error);
+      return result;
+    }
+    
+    if (result.data?.session?.user) {
+      console.log('✅ Login bem-sucedido');
+      
+      // Agora sim, carregar o perfil
+      try {
+        const userProfile = await loadUserProfile(result.data.session.user.id);
+        setProfile(userProfile);
+        console.log('✅ Perfil carregado após login:', userProfile);
+      } catch (profileError) {
+        console.log('⚠️ Perfil não encontrado, tentando criar...');
+        
+        try {
+          const userName = result.data.session.user.raw_user_meta_data?.name || 
+                          result.data.session.user.email?.split('@')[0] || 
+                          'Usuário';
+          
+          const newProfile = await createBasicProfile(result.data.session.user.id, userName);
+          setProfile(newProfile);
+          console.log('✅ Perfil criado após login:', newProfile);
+        } catch (createError) {
+          console.error('❌ Erro ao criar perfil:', createError);
+          // Continuar mesmo sem perfil
+        }
+      }
+    }
+    
     return result;
   } catch (error) {
-    console.error("Erro no login:", error);
+    console.error('❌ Erro no login:', error);
     return { error };
   }
 };
 
 const signUp = async (email: string, password: string, name: string, userData?: any) => {
   try {
-    console.log("Dados recebidos no signUp:", { email, name, userData });
+    console.log("🔍 Dados recebidos no signUp:", { email, name, userData });
+    
+    // Verificar se userData tem os campos necessários
+    if (userData) {
+      console.log("📋 Detalhes do userData:", {
+        cpf: userData.cpf,
+        telefone: userData.telefone,
+        endereco: userData.endereco
+      });
+    }
     
     // Simplificando o processo de cadastro
     const result = await supabase.auth.signUp({
@@ -177,20 +317,31 @@ const signUp = async (email: string, password: string, name: string, userData?: 
       },
     });
 
-    console.log("Resultado do auth.signUp:", result);
+    console.log("📤 Resultado do auth.signUp:", result);
 
     // Se o cadastro for bem-sucedido, criar ou atualizar perfil do usuário como cliente
     if (result.data?.user && !result.error) {
+      // Preparar dados do endereço
+      let enderecoJson = null;
+      if (userData?.endereco) {
+        try {
+          enderecoJson = JSON.stringify(userData.endereco);
+          console.log("🏠 Endereço serializado:", enderecoJson);
+        } catch (err) {
+          console.error("❌ Erro ao serializar endereço:", err);
+        }
+      }
+
       const profileData = {
         id: result.data.user.id,
-        name,
+        name: name?.trim() || '',
         role: 'cliente', // Novos usuários são clientes por padrão
-        cpf: userData?.cpf || null,
-        telefone: userData?.telefone || null,
-        endereco: userData?.endereco ? JSON.stringify(userData.endereco) : null,
+        cpf: userData?.cpf?.trim() || null,
+        telefone: userData?.telefone?.trim() || null,
+        endereco: enderecoJson,
       };
 
-      console.log("Dados do perfil a serem inseridos:", profileData);
+      console.log("💾 Dados do perfil a serem inseridos:", profileData);
       
       // Tentar inserir o perfil, se falhar por conflito, atualizar
       const { data: insertedData, error } = await supabase
@@ -199,27 +350,57 @@ const signUp = async (email: string, password: string, name: string, userData?: 
         .select();
 
       if (error) {
-        console.error("Erro ao criar/atualizar perfil:", error);
+        console.error("❌ Erro ao criar/atualizar perfil:", error);
+        console.error("❌ Detalhes do erro:", JSON.stringify(error, null, 2));
       } else {
-        console.log("Perfil criado/atualizado com sucesso:", insertedData);
+        console.log("✅ Perfil criado/atualizado com sucesso:", insertedData);
+        
+        // Verificar se os dados foram realmente salvos
+        const { data: verifyData, error: verifyError } = await supabase
+          .from("profiles")
+          .select('*')
+          .eq('id', result.data.user.id)
+          .single();
+          
+        if (verifyError) {
+          console.error("❌ Erro ao verificar perfil salvo:", verifyError);
+        } else {
+          console.log("🔍 Perfil verificado após inserção:", verifyData);
+        }
       }
     } else if (result.error) {
-      console.log("Erro no auth.signUp, não criando perfil:", result.error);
+      console.log("❌ Erro no auth.signUp, não criando perfil:", result.error);
     }
 
     return result;
   } catch (error) {
-    console.error("Erro no cadastro:", error);
+    console.error("❌ Erro no cadastro:", error);
     return { error };
   }
 };
 
 const signOut = async () => {
   try {
+    console.log('🚪 Fazendo logout...');
+    
+    // Fazer logout no Supabase
     const result = await supabase.auth.signOut();
+    
+    // Limpar estado local
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    
+    console.log('✅ Logout realizado com sucesso');
     return result;
   } catch (error) {
-    console.error("Erro ao fazer logout:", error);
+    console.error('❌ Erro ao fazer logout:', error);
+    
+    // Mesmo com erro, limpar estado local
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    
     return { error };
   }
 };
@@ -230,7 +411,7 @@ return (
       session,
       user,
       profile,
-      loading,
+      loading: loading || profileLoading,
       signIn,
       signUp,
       signOut,

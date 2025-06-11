@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getVersesPaginated } from '../services/versesService';
 import MusicCard from './MusicCard';
 import { Loader2, Plus } from 'lucide-react';
 import { Database } from '../integrations/supabase/types';
+// Removido import de cacheUtils - usando apenas Supabase
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
 
@@ -40,14 +41,35 @@ const HomePage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const ITEMS_PER_PAGE = 50;
 
-  useEffect(() => {
-    const fetchInitialVerses = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        console.log('Iniciando busca de versos na HomePage...');
-        const result = await getVersesPaginated(1, ITEMS_PER_PAGE);
+  // Função para recarregar dados do Supabase
+  const handleReloadData = async () => {
+    try {
+      console.log('🔄 Recarregando dados do Supabase...');
+      setVerses([]);
+      setCurrentPage(1);
+      setHasMore(true);
+      setError(null);
+      await fetchInitialVerses();
+    } catch (error) {
+      console.error('❌ Erro ao recarregar dados:', error);
+    }
+  };
+
+  const fetchInitialVerses = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('🔄 Iniciando busca de versos na HomePage (dados frescos)...');
+      const result = await getVersesPaginated(1, ITEMS_PER_PAGE);
+      
+      if (!result || !result.data || result.data.length === 0) {
+        console.warn('⚠️ Nenhum dado retornado do Supabase');
+        setVerses([]);
+        setTotalVerses(0);
+        setHasMore(false);
+        return;
+      }
         console.log(`Versos recebidos na HomePage: ${result.data.length} de ${result.total}`);
         setVerses(result.data);
         setTotalVerses(result.total);
@@ -61,10 +83,11 @@ const HomePage: React.FC = () => {
       }
     };
 
+  useEffect(() => {
     fetchInitialVerses();
   }, []);
 
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore) return;
     
     try {
@@ -92,22 +115,20 @@ const HomePage: React.FC = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, currentPage, ITEMS_PER_PAGE]);
+  };
 
-  // Mapear dados dos versos para o formato esperado pelo MusicCard com memoização
-  const displayedVerses = useMemo(() => {
-    return verses.map((verse, index) => ({
-      id: verse.id,
-      title: verse.titulo_original || 'Dados inconsistentes',
-      artist: verse.musical || 'Dados inconsistentes',
-      image: verse.url_imagem || '/musical-generic.svg',
-      category: getCategoryFromVerse(verse),
-      views: verse.visualizacoes || 0,
-      price: verse.valor || 0, // Valor direto do banco
-      classificacoes: verse.classificacao_vocal_alt || [],
-      dataIndex: index // Para scroll otimizado
-    }));
-  }, [verses]);
+  // Mapear dados dos versos para o formato esperado pelo MusicCard sem memoização
+  const displayedVerses = verses.map((verse, index) => ({
+    id: verse.id,
+    title: verse.titulo_original || 'Dados inconsistentes',
+    artist: verse.musical || 'Dados inconsistentes',
+    image: verse.url_imagem || '/musical-generic.svg',
+    category: getCategoryFromVerse(verse),
+    views: verse.visualizacoes || 0,
+    price: verse.valor || 0, // Valor direto do banco
+    classificacoes: verse.classificacao_vocal_alt || [],
+    dataIndex: index // Para scroll otimizado
+  }));
 
   if (isLoading) {
     return (
@@ -140,7 +161,41 @@ const HomePage: React.FC = () => {
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
               <button 
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  setError(null);
+                  setCurrentPage(1);
+                  setVerses([]);
+                  setHasMore(true);
+                  // Recarregar dados sem reload da página
+                  const fetchInitialVerses = async () => {
+                    try {
+                      setIsLoading(true);
+                      console.log('🔄 Tentando novamente buscar versos...');
+                      const result = await getVersesPaginated(1, ITEMS_PER_PAGE);
+                      
+                      if (result.data && result.data.length > 0) {
+                        const versesWithCategories = result.data.map(verse => ({
+                          ...verse,
+                          category: getCategoryFromVerse(verse)
+                        }));
+                        
+                        setVerses(versesWithCategories);
+                        setTotalVerses(result.total || 0);
+                        setHasMore(result.hasMore);
+                        console.log('✅ Versos recarregados com sucesso:', result.data.length);
+                      } else {
+                        console.error('❌ Nenhum verso encontrado');
+                        setError('Nenhum verso encontrado');
+                      }
+                    } catch (error) {
+                      console.error('💥 Erro inesperado ao recarregar:', error);
+                      setError('Erro inesperado ao carregar versos');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  };
+                  fetchInitialVerses();
+                }}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Tentar Novamente

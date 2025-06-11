@@ -1,19 +1,4 @@
 /*
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
-  Pragma: no-cache
-  Expires: 0
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  
-# Configurações específicas para autenticação
-/auth/*
-  Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0
-  Pragma: no-cache
-  Expires: 0
-  
-# Configurações para API calls
-/api/*
-  Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Pragma: no-cache
   Expires: 0

@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Music, Plus, Share2, Heart, Video, Loader2, Type } from "lucide-react";
+import { ArrowLeft, Music, Download, Video, Loader2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { useCart } from "@/hooks/useCart";
-import { CartProvider } from "@/hooks/useCart";
-<<<<<<< HEAD
+
 import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
-=======
-import { getVerse, incrementViews } from '../services/versesService';
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
+import { hasAccessToVerse } from '../services/purchaseService';
+import { useAuth } from '@/hooks/useAuth';
 import { Database } from '../integrations/supabase/types';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
@@ -32,6 +27,17 @@ const isValidData = (value: any): boolean => {
   return Boolean(value);
 };
 
+// Função específica para validar URLs de PDF
+const isValidPdfUrl = (url: any): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (trimmed === '' || trimmed.toLowerCase() === 'null' || trimmed === 'undefined') return false;
+  
+  // Aceitar URLs do Google Drive, links diretos de PDF ou outros domínios válidos
+  const urlPattern = /^https?:\/\/.+/i;
+  return urlPattern.test(trimmed);
+};
+
 // Função para exibir dados com fallback
 const displayData = (value: any, fallback: string = 'Não informado'): string => {
   if (!isValidData(value)) return fallback;
@@ -47,7 +53,7 @@ const displayData = (value: any, fallback: string = 'Não informado'): string =>
 const VerseDetails = () => {
   const { id, slug } = useParams<{ id?: string; slug?: string }>();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { user, profile } = useAuth();
   const [verse, setVerse] = useState<Verse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +72,16 @@ const VerseDetails = () => {
       if (!identifier && pathSegments.length > 0) {
         // Pegar o último segmento que não seja vazio
         identifier = pathSegments[pathSegments.length - 1];
+      }
+      
+      // Verificar se o identificador é uma rota específica que não deve ser tratada como verso
+      const reservedRoutes = ['manage-verses', 'manage-users', 'create', 'login', 'music', 'pre-purchase', 'meus-pedidos'];
+      if (identifier && reservedRoutes.includes(identifier)) {
+        console.log('🚫 Rota reservada detectada, não é um verso:', identifier);
+        setIsLoading(false);
+        setError(null);
+        setVerse(null);
+        return;
       }
       
       console.log('🔍 Informações da URL:', {
@@ -92,6 +108,16 @@ const VerseDetails = () => {
         
         if (data) {
           console.log('✅ Verso encontrado:', { id: data.id, titulo: data.titulo_pt_br || data.titulo_original });
+          
+          // Verificar se o usuário tem acesso ao verso
+          const hasAccess = await hasAccessToVerse(user?.id || null, data.id, profile?.role);
+          
+          if (!hasAccess) {
+            console.log('🚫 Usuário não tem acesso ao verso, redirecionando para pré-compra');
+            navigate(`/pre-purchase/${data.id}`, { replace: true });
+            return;
+          }
+          
           setVerse(data);
           
           // Incrementar visualizações
@@ -101,7 +127,6 @@ const VerseDetails = () => {
           } catch (viewError) {
             console.warn('⚠️ Erro ao incrementar visualizações:', viewError);
           }
-<<<<<<< HEAD
           
           // Buscar versões irmãs se existirem
           if (data.versoes_irmas && data.versoes_irmas.length > 0) {
@@ -112,8 +137,6 @@ const VerseDetails = () => {
               console.error('Erro ao carregar versões irmãs:', err);
             }
           }
-=======
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
         } else {
           console.error('❌ Verso não encontrado para identificador:', identifier);
           setError('Verso não encontrado');
@@ -155,6 +178,11 @@ const VerseDetails = () => {
   }
 
   if (!verse) {
+    // Se não há verso e não há erro, é uma rota reservada - não renderizar nada
+    if (!error) {
+      return null;
+    }
+    
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -168,15 +196,10 @@ const VerseDetails = () => {
     );
   }
 
-  const handleAddToCart = () => {
-    addToCart({
-      id: verse.id.toString(),
-      title: displayData(verse.titulo_original || verse.titulo_pt_br, 'Título'),
-      artist: displayData(verse.musical, 'Musical'),
-      category: displayData(verse.estilo?.[0], 'Categoria'),
-      image: verse.url_imagem || '/placeholder.svg',
-      price: verse.valor || 0 // Valor direto do banco
-    });
+  const handleDownloadPDF = () => {
+    if (verse.pdf) {
+      window.open(verse.pdf, '_blank');
+    }
   };
 
   const handleGoBack = () => {
@@ -191,9 +214,7 @@ const VerseDetails = () => {
   };
 
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-white">
-        <Header />
+    <div className="min-h-screen bg-white">
         
         <main className="container mx-auto px-4 sm:px-6 py-6">
           {/* Botão Voltar */}
@@ -216,11 +237,7 @@ const VerseDetails = () => {
                       <Video className="w-5 h-5 mr-2 text-red-600" />
                       Áudio Original
                     </h2>
-<<<<<<< HEAD
                     <div className="w-full rounded-lg overflow-hidden" style={{aspectRatio: '16/10'}}>
-=======
-                    <div className="aspect-video w-full rounded-lg overflow-hidden">
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
                       {(() => {
                         const youtubeId = getYouTubeId(verse.audio_original!);
                         if (youtubeId) {
@@ -251,11 +268,7 @@ const VerseDetails = () => {
                       <Video className="w-5 h-5 mr-2 text-gray-600" />
                       Áudio Original
                     </h2>
-<<<<<<< HEAD
                     <div className="w-full rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center" style={{aspectRatio: '16/10'}}>
-=======
-                    <div className="aspect-video w-full rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
                       <p className="text-gray-600 text-center">Áudio não disponível</p>
                     </div>
                   </div>
@@ -284,73 +297,17 @@ const VerseDetails = () => {
 
               {/* Ações */}
               <div className="space-y-4">
-<<<<<<< HEAD
-                {/* Botão de adicionar ao carrinho */}
+                {/* Botão de download PDF */}
                 <Button
-                  onClick={handleAddToCart}
-                  className="w-full bg-primary hover:bg-primary/90 rounded-full transition-all duration-200 py-3 text-lg font-semibold"
+                  onClick={handleDownloadPDF}
+                  disabled={!verse.pdf}
+                  className="w-full bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-full transition-all duration-200 py-3 text-lg font-semibold"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Adicionar ao Carrinho
-                  {isValidData(verse.valor) && verse.valor! > 0 && (
-                    <span className="ml-2 text-primary-foreground/80">
-                      • R$ {(verse.valor! / 100).toFixed(2).replace('.', ',')}
-                    </span>
-                  )}
+                  <Download className="w-5 h-5 mr-2" />
+                  {verse.pdf ? 'Baixar PDF' : 'PDF Indisponível'}
                 </Button>
-=======
-                {/* Preço e Botão de Adicionar */}
-                <div className="space-y-4">
-                  {/* Preço em destaque */}
-                  {isValidData(verse.valor) && verse.valor! > 0 ? (
-                    <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-purple-100 rounded-xl">
-                      <p className="text-sm text-gray-600 mb-1">Preço</p>
-                      <p className="text-3xl font-bold text-primary">
-                        R$ {(verse.valor! / 100).toFixed(2).replace('.', ',')}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center p-4 bg-gradient-to-r from-green-100 to-emerald-200 rounded-xl">
-                      <p className="text-sm text-gray-600 mb-1">Preço</p>
-                      <p className="text-lg font-semibold text-green-700">
-                        Gratuito
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Botão de adicionar ao carrinho */}
-                  <Button
-                    onClick={handleAddToCart}
-                    className="w-full bg-primary hover:bg-primary/90 rounded-full transition-all duration-200 py-3 text-lg font-semibold"
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Adicionar ao Carrinho
-                    {isValidData(verse.valor) && verse.valor! > 0 && (
-                      <span className="ml-2 text-primary-foreground/80">
-                        • R$ {(verse.valor! / 100).toFixed(2).replace('.', ',')}
-                      </span>
-                    )}
-                  </Button>
-                </div>
->>>>>>> 5ea2d73f07b9afa220be99574d063cee53bbf8f6
                 
-                {/* Botões de Ação Secundários */}
-                <div className="flex gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full border-gray-300 hover:bg-gray-50"
-                  >
-                    <Heart className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full border-gray-300 hover:bg-gray-50"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </Button>
-                </div>
+
               </div>
             </div>
 
@@ -365,11 +322,6 @@ const VerseDetails = () => {
                   {displayData(verse.titulo_original || verse.titulo_pt_br, 'Título')}
                 </h1>
                 <p className="text-xl text-gray-600 mb-4">{displayData(verse.musical, 'Musical')}</p>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>{(verse.visualizacoes || 0).toLocaleString()} visualizações</span>
-                  <span>•</span>
-                  <span>{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
-                </div>
               </div>
 
               {/* Título Traduzido */}
@@ -455,9 +407,7 @@ const VerseDetails = () => {
 
         </main>
 
-        <Footer />
       </div>
-    </CartProvider>
   );
 };
 

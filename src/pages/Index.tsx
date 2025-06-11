@@ -1,26 +1,9 @@
 
 import React from "react";
-import Header from "@/components/Header";
-import FeaturedCarousel from "@/components/FeaturedCarousel";
-import MusicGrid from "@/components/MusicGrid";
-import Footer from "@/components/Footer";
-import { CartProvider } from "@/hooks/useCart";
-
+import HomePage from "@/components/HomePage";
 
 const Index = () => {
-  return (
-    <CartProvider>
-      <div className="min-h-screen bg-white">
-
-        <Header />
-        <main>
-          <FeaturedCarousel />
-          <MusicGrid />
-        </main>
-        <Footer />
-      </div>
-    </CartProvider>
-  );
+  return <HomePage />;
 };
 
 export default Index;

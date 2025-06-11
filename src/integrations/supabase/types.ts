@@ -589,25 +589,6 @@ export type Database = {
           updated_at: string | null
         }
       }
-      update_user_profile: {
-        Args: {
-          user_id: string
-          user_name?: string
-          user_cpf?: string
-          user_telefone?: string
-          user_endereco?: Json
-        }
-        Returns: {
-          cpf: string | null
-          created_at: string | null
-          endereco: Json | null
-          id: string
-          name: string
-          role: string | null
-          telefone: string | null
-          updated_at: string | null
-        }
-      }
     }
     Enums: {
       [_ in never]: never

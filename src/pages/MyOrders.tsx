@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -200,7 +200,7 @@ const MyOrders = () => {
                                   <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                                     <div>
                                       <p className="font-medium">{item.title}</p>
-                                      <p className="text-sm text-gray-600">{item.musical}</p>
+                                      <p className="text-sm text-gray-600">{item.artist}</p>
                                     </div>
                                     <div className="text-right">
                                       <p className="font-medium">R$ {item.price.toFixed(2)}</p>

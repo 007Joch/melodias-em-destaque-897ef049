@@ -1,63 +1,80 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getVerseById } from '@/services/versesService';
-import { useCart } from '@/hooks/useCart';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Play, Pause, Download, ShoppingCart, ArrowLeft, Music, Users, Clock, Star } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart';
+import { supabase } from '@/integrations/supabase/client';
+import { ArrowLeft, Play, Download, ShoppingCart, Heart, Star, Clock, Users, Music } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface Verse {
+  id: number;
+  titulo_original: string;
+  titulo_pt_br: string;
+  musical: string;
+  letra_original: string;
+  valor: number;
+  url_imagem?: string;
+  audio_original?: string;
+  dificuldade?: number;
+  solistas_masculinos?: number;
+  solistas_femininos?: number;
+  coro_masculino?: boolean;
+  coro_feminino?: boolean;
+  estilo?: string[];
+  natureza?: string[];
+  compositor?: string[];
+  letrista?: string[];
+  versionista?: string[];
+}
+
 const PrePurchase = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
   const { user } = useAuth();
-  const [verse, setVerse] = useState<any>(null);
+  const { addToCart } = useCart();
+  const [verse, setVerse] = useState<Verse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (id) {
-      loadVerse();
-    }
-  }, [id]);
+    loadVerse();
+  }, [slug]);
 
   const loadVerse = async () => {
     try {
       setLoading(true);
-      const data = await getVerseById(parseInt(id!));
+      
+      let query = supabase
+        .from('versoes')
+        .select('*');
+      
+      // Verificar se é um ID numérico ou slug
+      if (slug && !isNaN(Number(slug))) {
+        query = query.eq('id', parseInt(slug));
+      } else {
+        query = query.eq('titulo_pt_br', slug);
+      }
+      
+      const { data, error } = await query.single();
+
+      if (error) {
+        console.error('Erro ao carregar verso:', error);
+        toast.error('Verso não encontrado');
+        navigate('/');
+        return;
+      }
+
       setVerse(data);
     } catch (error) {
       console.error('Erro ao carregar verso:', error);
-      toast.error('Erro ao carregar informações da música');
+      toast.error('Erro ao carregar verso');
       navigate('/');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePlayAudio = (audioUrl: string) => {
-    if (currentAudio) {
-      currentAudio.pause();
-      setCurrentAudio(null);
-      setIsPlaying(false);
-    }
-
-    if (!isPlaying) {
-      const audio = new HTMLAudioElement(audioUrl);
-      audio.play();
-      setCurrentAudio(audio);
-      setIsPlaying(true);
-      
-      audio.onended = () => {
-        setIsPlaying(false);
-        setCurrentAudio(null);
-      };
     }
   };
 
@@ -68,18 +85,18 @@ const PrePurchase = () => {
       return;
     }
 
-    const cartItem = {
-      id: verse.id,
-      title: verse.titulo_pt_br,
-      musical: verse.musical,
-      price: verse.valor || 0,
-      image: verse.url_imagem || '/musical-generic.svg',
-      artist: verse.compositor?.join(', ') || 'Artista não informado',
-      category: verse.estilo?.join(', ') || 'Categoria não informada'
-    };
+    if (!verse) return;
 
-    addToCart(cartItem);
-    toast.success('Música adicionada ao carrinho!');
+    addToCart({
+      id: verse.id.toString(),
+      title: verse.titulo_pt_br,
+      artist: verse.musical,
+      category: verse.estilo?.[0] || 'Musical',
+      image: verse.url_imagem,
+      price: verse.valor || 0
+    });
+
+    toast.success('Adicionado ao carrinho!');
   };
 
   const getDifficultyBadge = (difficulty: number) => {
@@ -145,7 +162,7 @@ const PrePurchase = () => {
                     className="w-full"
                     onClick={() => handlePlayAudio(verse.audio_original)}
                   >
-                    {isPlaying ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                    {audioPlaying ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
                     Áudio Original
                   </Button>
                 )}

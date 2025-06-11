@@ -458,31 +458,23 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
   }
 };
 
-// Função para buscar todos os versos (mantida para compatibilidade)
-export const getAllVerses = async (): Promise<any[]> => {
+// Função para buscar todos os versos
+export const getAllVerses = async (): Promise<VerseData[]> => {
   try {
-    console.log('Buscando todos os versos ativos da tabela versoes...');
-    
-    // Buscar apenas os primeiros registros para garantir que algo seja retornado
-    const { data: simpleData, error: simpleError } = await supabase
+    const { data, error } = await supabase
       .from('versoes')
       .select('*')
-      .range(0, 49);
-      
-    if (simpleError) {
-      console.error('Erro na busca simples:', simpleError);
-      return [];
-    } else {
-      console.log(`Registros encontrados na busca simples: ${simpleData?.length || 0}`);
-      if (simpleData && simpleData.length > 0) {
-        return processVerseData(simpleData);
-      }
+      .order('criada_em', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar versos:', error);
+      throw error;
     }
-    
-    return [];
+
+    return data || [];
   } catch (error) {
     console.error('Erro ao buscar versos:', error);
-    return [];
+    throw error;
   }
 };
 

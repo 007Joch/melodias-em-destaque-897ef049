@@ -2,11 +2,26 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+// Interface para tipar o retorno da função get_all_users
+interface UserData {
+  id: string;
+  email?: string;
+  name?: string;
+  role?: string;
+  account_status?: string;
+  failed_login_attempts?: number;
+  blocked_until?: string;
+  blocked_reason?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   profile: any | null;
   loading: boolean;
+  profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<any>;
   signUp: (email: string, password: string, name: string, userData?: any) => Promise<any>;
   signOut: () => Promise<any>;
@@ -119,6 +134,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // useEffect para monitorar mudanças no perfil e forçar logout se conta bloqueada
+  useEffect(() => {
+    if (user && profile) {
+      // Verificar se a conta está bloqueada por administrador
+      if (profile.account_status === 'inactive' && profile.blocked_reason === 'admin_blocked') {
+        console.log('🚫 [AuthContext] Conta bloqueada por administrador - forçando logout');
+        signOut();
+        return;
+      }
+
+      // Verificar se a conta está bloqueada temporariamente
+      if (profile.blocked_until) {
+        const blockedUntil = new Date(profile.blocked_until);
+        const now = new Date();
+        
+        if (now < blockedUntil) {
+          console.log('🚫 [AuthContext] Conta bloqueada temporariamente - forçando logout');
+          signOut();
+          return;
+        }
+      }
+    }
+  }, [user, profile]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -126,6 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       try {
         console.log('🔐 Verificando sessão inicial...');
+        setProfileLoading(true); // Definir profileLoading como true no início
         
         const { data: { session }, error } = await supabase.auth.getSession();
         
@@ -179,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           
           setLoading(false);
+          setProfileLoading(false); // Definir profileLoading como false no final
         }
       } catch (error) {
         console.error('❌ Erro ao inicializar auth:', error);
@@ -187,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setProfile(null);
           setLoading(false);
+          setProfileLoading(false); // Definir profileLoading como false em caso de erro
         }
       }
     };
@@ -249,7 +291,45 @@ const signIn = async (email: string, password: string) => {
   try {
     console.log('🔑 Tentando fazer login...');
     
-    // Fazer login
+    // PRIMEIRO: Verificar se a conta existe e seu status ANTES de tentar fazer login
+    try {
+      const { data: userData, error: userError } = await supabase
+        .rpc('get_all_users')
+        .eq('email', email)
+        .single() as { data: UserData | null, error: any };
+      
+      if (!userError && userData) {
+        // Verificar se a conta está bloqueada por admin ANTES de tentar login
+        if (userData?.account_status === 'inactive' && userData?.blocked_reason === 'admin_blocked') {
+          return {
+            error: {
+              message: 'Sua conta foi bloqueada por um administrador. Para reativar sua conta, entre em contato pelo WhatsApp (11) 94649-3583 ou acesse nossa página de contato.',
+              status: 'account_blocked_by_admin'
+            }
+          };
+        }
+        
+        // Verificar se a conta está bloqueada temporariamente ANTES de tentar login
+        if (userData?.blocked_until) {
+          const blockedUntil = new Date(userData.blocked_until);
+          const now = new Date();
+          
+          if (now < blockedUntil) {
+            return {
+              error: {
+                message: `Sua conta está temporariamente bloqueada até ${blockedUntil.toLocaleString('pt-BR')}. Aguarde ou redefina sua senha.`,
+                status: 'account_temporarily_blocked'
+              }
+            };
+          }
+        }
+      }
+    } catch (checkError) {
+      console.log('⚠️ Erro ao verificar status da conta antes do login:', checkError);
+      // Continuar com o login mesmo se não conseguir verificar o status
+    }
+    
+    // SEGUNDO: Fazer login apenas se a conta não estiver bloqueada
     const result = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -263,7 +343,7 @@ const signIn = async (email: string, password: string) => {
     if (result.data?.session?.user) {
       console.log('✅ Login bem-sucedido');
       
-      // Agora sim, carregar o perfil
+      // Carregar o perfil normalmente
       try {
         const userProfile = await loadUserProfile(result.data.session.user.id);
         setProfile(userProfile);
@@ -378,6 +458,7 @@ return (
       user,
       profile,
       loading: loading || profileLoading,
+      profileLoading,
       signIn,
       signUp,
       signOut,

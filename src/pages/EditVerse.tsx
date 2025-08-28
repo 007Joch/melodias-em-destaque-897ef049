@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Eye, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2, Plus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,15 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { CartProvider } from '@/hooks/useCart';
+
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { updateVerse, getVerseById, VerseFormData } from '../services/versesService';
+import { updateVerse, getVerseById, VerseFormData, searchSisterVerses, VerseSearchResult, getVersesByIds, Verse } from '../services/versesService';
 import { toast } from '@/components/ui/sonner';
-import { Database } from '../integrations/supabase/types';
 import PriceInput from '@/components/PriceInput';
-
-type Verse = Database['public']['Tables']['versoes']['Row'];
 
 const EditVerse = () => {
   const navigate = useNavigate();
@@ -32,12 +29,17 @@ const EditVerse = () => {
     titulo_pt_br: '',
     titulo_original: '',
     musical: '',
-    estilo: '',
+    estilo: [],
+    natureza: [],
+    dificuldade: [],
+    classificacao_vocal_alt: [],
     conteudo: '',
     audioOriginal: '',
     imageUrl: '',
     imageFile: undefined,
-    valor: 0
+    valor: 0,
+    ano_gravacao: undefined,
+    elenco: ''
   });
 
   const [isPreview, setIsPreview] = useState(false);
@@ -45,6 +47,27 @@ const EditVerse = () => {
   const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingVerse, setIsLoadingVerse] = useState(true);
+  
+  // Estados para versões irmãs
+  const [showSisterVersesField, setShowSisterVersesField] = useState(false);
+  const [sisterVersesSearch, setSisterVersesSearch] = useState('');
+  const [sisterVersesResults, setSisterVersesResults] = useState<VerseSearchResult[]>([]);
+  // Tipo específico para versões irmãs selecionadas
+  type SelectedSisterVerse = {
+    id: number;
+    titulo_original: string;
+    titulo_pt_br: string;
+    musical: string;
+  };
+  
+  const [selectedSisterVerses, setSelectedSisterVerses] = useState<SelectedSisterVerse[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Estados para campos dinâmicos
+  const [estiloInput, setEstiloInput] = useState('');
+  const [naturezaInput, setNaturezaInput] = useState('');
+  const [dificuldadeInput, setDificuldadeInput] = useState('');
+  const [classificacaoVocalInput, setClassificacaoVocalInput] = useState('');
 
   const categories = ['Gospel', 'Louvor', 'Adoração', 'Contemporâneo', 'Teatro Musical', 'Clássico'];
 
@@ -59,12 +82,25 @@ const EditVerse = () => {
       ['link'],
       ['clean']
     ],
+    clipboard: {
+      // Preservar formatação básica ao colar conteúdo do Word
+      matchVisual: true
+    }
   };
 
   const quillFormats = [
     'header', 'bold', 'italic', 'underline', 'strike',
     'align', 'list', 'bullet', 'blockquote', 'code-block', 'link'
   ];
+
+
+
+  // Função para lidar com mudanças no conteúdo do ReactQuill
+  const handleContentChange = (value: string) => {
+    // Aplicar limpeza básica em tempo real
+    const cleaned = value.replace(/\s{3,}/g, '  '); // Limitar a no máximo 2 espaços consecutivos
+    handleInputChange('conteudo', cleaned);
+  };
 
   // Carregar dados do verso para edição
   useEffect(() => {
@@ -98,16 +134,32 @@ const EditVerse = () => {
           titulo_pt_br: verseData.titulo_pt_br || '',
           titulo_original: verseData.titulo_original || '',
           musical: verseData.musical || '',
-          estilo: Array.isArray(verseData.estilo) ? verseData.estilo[0] || '' : verseData.estilo || '',
-          conteudo: verseData.conteudo || '',
+          estilo: Array.isArray(verseData.estilo) ? verseData.estilo : [],
+          natureza: Array.isArray(verseData.natureza) ? verseData.natureza : [],
+          dificuldade: Array.isArray(verseData.dificuldade) ? verseData.dificuldade : [],
+          classificacao_vocal_alt: Array.isArray(verseData.classificacao_vocal_alt) ? verseData.classificacao_vocal_alt : [],
+          conteudo: cleanHtmlContent(verseData.conteudo || ''),
           audioOriginal: verseData.audio_original || '',
           imageUrl: verseData.url_imagem || '',
           imageFile: undefined,
-          valor: verseData.valor || 0 // Valor direto do banco
+          valor: verseData.valor || 0, // Valor direto do banco
+          ano_gravacao: verseData.ano_gravacao || undefined,
+          elenco: verseData.elenco || ''
         });
 
         if (verseData.url_imagem) {
           setImagePreview(verseData.url_imagem);
+        }
+
+        // Carregar versões irmãs se existirem
+        if (verseData.versoes_irmas && verseData.versoes_irmas.length > 0) {
+          try {
+            const sisterVersesData = await getVersesByIds(verseData.versoes_irmas);
+            setSelectedSisterVerses(sisterVersesData);
+            setShowSisterVersesField(true);
+          } catch (error) {
+            console.error('Erro ao carregar versões irmãs:', error);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar verso:', error);
@@ -128,6 +180,133 @@ const EditVerse = () => {
     }));
   };
 
+  // Funções para gerenciar campos dinâmicos
+  const addEstilo = () => {
+    if (estiloInput.trim() && formData.estilo.length < 10 && !formData.estilo.includes(estiloInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        estilo: [...prev.estilo, estiloInput.trim()]
+      }));
+      setEstiloInput('');
+    }
+  };
+
+  const removeEstilo = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      estilo: prev.estilo.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addNatureza = () => {
+    if (naturezaInput.trim() && formData.natureza.length < 10 && !formData.natureza.includes(naturezaInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        natureza: [...prev.natureza, naturezaInput.trim()]
+      }));
+      setNaturezaInput('');
+    }
+  };
+
+  const removeNatureza = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      natureza: prev.natureza.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addDificuldade = () => {
+    const num = parseInt(dificuldadeInput);
+    if (!isNaN(num) && num >= 1 && num <= 5 && formData.dificuldade.length < 10 && !formData.dificuldade.includes(num)) {
+      setFormData(prev => ({
+        ...prev,
+        dificuldade: [...prev.dificuldade, num]
+      }));
+      setDificuldadeInput('');
+    }
+  };
+
+  const removeDificuldade = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      dificuldade: prev.dificuldade.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addClassificacaoVocal = () => {
+    if (classificacaoVocalInput.trim() && formData.classificacao_vocal_alt.length < 10 && !formData.classificacao_vocal_alt.includes(classificacaoVocalInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        classificacao_vocal_alt: [...prev.classificacao_vocal_alt, classificacaoVocalInput.trim()]
+      }));
+      setClassificacaoVocalInput('');
+    }
+  };
+
+  const removeClassificacaoVocal = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      classificacao_vocal_alt: prev.classificacao_vocal_alt.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Funções para versões irmãs
+  const handleSisterVersesSearch = async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setSisterVersesResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchSisterVerses(searchTerm, verse?.id);
+      setSisterVersesResults(results);
+    } catch (error) {
+      console.error('Erro ao buscar versões irmãs:', error);
+      toast.error('Erro ao buscar versões irmãs');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const addSisterVerse = (verse: VerseSearchResult) => {
+    if (selectedSisterVerses.length >= 10) {
+      toast.error('Máximo de 10 versões irmãs permitidas');
+      return;
+    }
+
+    if (selectedSisterVerses.find(v => v.id === verse.id)) {
+      toast.error('Esta versão já foi adicionada');
+      return;
+    }
+
+    // Criar um objeto Verse mínimo com os dados disponíveis
+    const verseToAdd = {
+      id: verse.id,
+      titulo_original: verse.titulo_original,
+      titulo_pt_br: verse.titulo_pt_br,
+      musical: verse.musical
+    };
+
+    const newSelectedVerses = [...selectedSisterVerses, verseToAdd];
+    setSelectedSisterVerses(newSelectedVerses);
+    setFormData(prev => ({
+      ...prev,
+      versoes_irmas: newSelectedVerses.map(v => v.id)
+    }));
+    setSisterVersesSearch('');
+    setSisterVersesResults([]);
+  };
+
+  const removeSisterVerse = (verseId: number) => {
+    const newSelectedVerses = selectedSisterVerses.filter(v => v.id !== verseId);
+    setSelectedSisterVerses(newSelectedVerses);
+    setFormData(prev => ({
+      ...prev,
+      versoes_irmas: newSelectedVerses.map(v => v.id)
+    }));
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -144,6 +323,40 @@ const EditVerse = () => {
   const handleImageUrlChange = (url: string) => {
     setFormData(prev => ({ ...prev, imageUrl: url }));
     setImagePreview(url);
+  };
+
+  // Função para limpar o conteúdo HTML do ReactQuill
+  const cleanHtmlContent = (htmlContent: string): string => {
+    if (!htmlContent) return '';
+    
+    let cleaned = htmlContent;
+    
+    // Preservar quebras de linha múltiplas convertendo-as em parágrafos vazios
+    // Detectar múltiplas quebras de linha e convertê-las em parágrafos vazios
+    cleaned = cleaned.replace(/(<\/p>)\s*(<br\s*\/??>\s*){2,}\s*(<p>)/gi, '$1<p><br></p>$3');
+    
+    // Preservar espaçamentos intencionais entre parágrafos
+    // Se há múltiplos <br> ou espaços entre </p> e <p>, manter como parágrafo vazio
+    cleaned = cleaned.replace(/(<\/p>)([\s\n]*<br[^>]*>[\s\n]*)+(<p>)/gi, '$1<p><br></p>$3');
+    
+    // Remove apenas espaços desnecessários, mas preserva estrutura
+    cleaned = cleaned.replace(/\s+</g, '<');
+    cleaned = cleaned.replace(/>\s+/g, '>');
+    
+    // Remove espaços no início e fim de parágrafos (mas não entre eles)
+    cleaned = cleaned.replace(/<p>\s+/g, '<p>');
+    cleaned = cleaned.replace(/\s+<\/p>/g, '</p>');
+    
+    // Remove espaços extras em elementos de formatação
+    cleaned = cleaned.replace(/<strong>\s+/g, '<strong>');
+    cleaned = cleaned.replace(/\s+<\/strong>/g, '</strong>');
+    cleaned = cleaned.replace(/<em>\s+/g, '<em>');
+    cleaned = cleaned.replace(/\s+<\/em>/g, '</em>');
+    
+    // Remove espaços no início e fim do conteúdo total
+    cleaned = cleaned.trim();
+    
+    return cleaned;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,7 +380,13 @@ const EditVerse = () => {
     try {
       setIsLoading(true);
       
-      const updatedVerse = await updateVerse(parseInt(id!), formData);
+      // Limpar o conteúdo antes de enviar
+      const cleanedFormData = {
+        ...formData,
+        conteudo: cleanHtmlContent(formData.conteudo)
+      };
+      
+      const updatedVerse = await updateVerse(parseInt(id!), cleanedFormData);
       
       if (updatedVerse) {
         toast.success('Verso atualizado com sucesso!');
@@ -185,8 +404,7 @@ const EditVerse = () => {
 
   if (isLoadingVerse) {
     return (
-      <CartProvider>
-        <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50">
           <Header />
           <main className="container mx-auto px-4 sm:px-6 py-8">
             <div className="flex items-center justify-center min-h-[400px]">
@@ -197,14 +415,12 @@ const EditVerse = () => {
             </div>
           </main>
           <Footer />
-        </div>
-      </CartProvider>
+      </div>
     );
   }
 
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
         <Header />
         
         <main className="container mx-auto px-4 sm:px-6 py-8">
@@ -218,22 +434,12 @@ const EditVerse = () => {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Editar Verso</h1>
-                <p className="text-gray-600 mt-1">Edite as informações do verso musical</p>
+                <h1 className="text-3xl font-bold text-gray-900">Editar Versão</h1>
+                <p className="text-gray-600 mt-1">Edite as informações da versão musical</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsPreview(!isPreview)}
-                className="rounded-full"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                {isPreview ? 'Editar' : 'Visualizar'}
-              </Button>
-            </div>
+
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -289,21 +495,173 @@ const EditVerse = () => {
                       />
                     </div>
                     
+                    {/* Estilo */}
                     <div className="space-y-2">
-                      <Label htmlFor="estilo" className="text-sm font-medium text-gray-700">
-                        Categoria
+                      <Label className="text-sm font-medium text-gray-700">
+                        Estilo (máximo 10)
                       </Label>
-                      <select
-                        id="estilo"
-                        value={formData.estilo}
-                        onChange={(e) => handleInputChange('estilo', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                      >
-                        <option value="">Selecione uma categoria</option>
-                        {categories.map(category => (
-                          <option key={category} value={category}>{category}</option>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={estiloInput}
+                          onChange={(e) => setEstiloInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && addEstilo()}
+                          placeholder="Digite um estilo"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={addEstilo}
+                          disabled={!estiloInput.trim() || formData.estilo.length >= 10}
+                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.estilo.map((item, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                          >
+                            {item}
+                            <button
+                              type="button"
+                              onClick={() => removeEstilo(index)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              ×
+                            </button>
+                          </span>
                         ))}
-                      </select>
+                      </div>
+                    </div>
+
+                    {/* Natureza */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Natureza (máximo 10)
+                      </Label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={naturezaInput}
+                          onChange={(e) => setNaturezaInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && addNatureza()}
+                          placeholder="Digite uma natureza"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={addNatureza}
+                          disabled={!naturezaInput.trim() || formData.natureza.length >= 10}
+                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.natureza.map((item, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                          >
+                            {item}
+                            <button
+                              type="button"
+                              onClick={() => removeNatureza(index)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Dificuldade */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Dificuldade (1-5, máximo 10)
+                      </Label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={dificuldadeInput}
+                          onChange={(e) => setDificuldadeInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && addDificuldade()}
+                          placeholder="Digite um número de 1 a 5"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={addDificuldade}
+                          disabled={!dificuldadeInput || formData.dificuldade.length >= 10}
+                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.dificuldade.map((item, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                          >
+                            {item}
+                            <button
+                              type="button"
+                              onClick={() => removeDificuldade(index)}
+                              className="text-purple-600 hover:text-purple-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Classificação Vocal */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Classificação Vocal (máximo 10)
+                      </Label>
+                      <div className="flex gap-2">
+                        <input
+                          value={classificacaoVocalInput}
+                          onChange={(e) => setClassificacaoVocalInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && addClassificacaoVocal()}
+                          placeholder="Digite uma classificação vocal"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={addClassificacaoVocal}
+                          disabled={!classificacaoVocalInput.trim() || formData.classificacao_vocal_alt.length >= 10}
+                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.classificacao_vocal_alt.map((item, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                          >
+                            {item}
+                            <button
+                              type="button"
+                              onClick={() => removeClassificacaoVocal(index)}
+                              className="text-purple-600 hover:text-purple-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
@@ -329,6 +687,139 @@ const EditVerse = () => {
                         onChange={(e) => handleInputChange('versionadoEm', e.target.value)}
                         className="rounded-lg border-gray-300 focus:border-primary"
                       />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="ano_gravacao" className="text-sm font-medium text-gray-700">
+                        Ano da Gravação
+                      </Label>
+                      <Input
+                        id="ano_gravacao"
+                        type="number"
+                        min="1900"
+                        max="2030"
+                        value={formData.ano_gravacao || ''}
+                        onChange={(e) => handleInputChange('ano_gravacao', e.target.value ? parseInt(e.target.value) : undefined)}
+                        placeholder="Ex: 2013"
+                        className="rounded-lg border-gray-300 focus:border-primary"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="elenco" className="text-sm font-medium text-gray-700">
+                        Elenco
+                      </Label>
+                      <Input
+                        id="elenco"
+                        value={formData.elenco || ''}
+                        onChange={(e) => handleInputChange('elenco', e.target.value)}
+                        placeholder="Ex: do elenco original da Broadway"
+                        className="rounded-lg border-gray-300 focus:border-primary"
+                      />
+                    </div>
+                    
+                    {/* Campo de Versões Irmãs */}
+                    <div className="md:col-span-2">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-sm font-medium text-gray-700">
+                          Versões Irmãs (Opcional)
+                        </Label>
+                        {!showSisterVersesField && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowSisterVersesField(true)}
+                            className="flex items-center space-x-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Adicionar Versões Irmãs</span>
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {showSisterVersesField && (
+                        <div className="space-y-4">
+                          {/* Campo de busca */}
+                          <div className="relative">
+                            <div className="flex space-x-2">
+                              <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <Input
+                                  placeholder="Buscar por título original..."
+                                  value={sisterVersesSearch}
+                                  onChange={(e) => {
+                                    setSisterVersesSearch(e.target.value);
+                                    handleSisterVersesSearch(e.target.value);
+                                  }}
+                                  className="pl-10 rounded-lg border-gray-300 focus:border-primary"
+                                />
+                                {isSearching && (
+                                  <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setShowSisterVersesField(false);
+                                  setSisterVersesSearch('');
+                                  setSisterVersesResults([]);
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            
+                            {/* Resultados da busca */}
+                            {sisterVersesResults.length > 0 && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                {sisterVersesResults.map((verse) => (
+                                  <div
+                                    key={verse.id}
+                                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                    onClick={() => addSisterVerse(verse)}
+                                  >
+                                    <div className="font-medium text-gray-900">{verse.titulo_original}</div>
+                                    <div className="text-sm text-gray-600">{verse.musical}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Versões selecionadas */}
+                          {selectedSisterVerses.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-gray-700">
+                                Versões Irmãs Selecionadas ({selectedSisterVerses.length}/10):
+                              </div>
+                              <div className="space-y-2">
+                                {selectedSisterVerses.map((verse) => (
+                                  <div
+                                    key={verse.id}
+                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                                  >
+                                    <div>
+                                      <div className="font-medium text-gray-900">{verse.titulo_original}</div>
+                                      <div className="text-sm text-gray-600">{verse.musical}</div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeSisterVerse(verse.id)}
+                                      className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -424,7 +915,7 @@ const EditVerse = () => {
                       <div className="border border-gray-300 rounded-lg overflow-hidden">
                         <ReactQuill
                           value={formData.conteudo}
-                          onChange={(value) => handleInputChange('conteudo', value)}
+                          onChange={handleContentChange}
                           modules={quillModules}
                           formats={quillFormats}
                           placeholder="Digite o conteúdo da versão em português..."
@@ -580,7 +1071,6 @@ const EditVerse = () => {
 
         <Footer />
       </div>
-    </CartProvider>
   );
 };
 

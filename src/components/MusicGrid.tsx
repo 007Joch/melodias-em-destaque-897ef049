@@ -1,50 +1,32 @@
 import React, { useState, useEffect } from "react";
 import MusicCard from "./MusicCard";
-import FilterBar from "./FilterBar";
 import { getVersesPaginated } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
 import { Loader2 } from 'lucide-react';
+import { DEFAULT_VERSE_IMAGE } from '@/constants/images';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
 
-// Função auxiliar para obter uma categoria válida
-const getCategoryFromVerse = (verse: Verse): string => {
-  // Verificamos se estilo existe, é um array e tem elementos
-  if (verse.estilo && Array.isArray(verse.estilo) && verse.estilo.length > 0) {
-    return verse.estilo[0];
-  }
-  
-  // Categorias padrão baseadas no nome do musical ou título
-  const musicalLower = (verse.musical || '').toLowerCase();
-  const titleLower = (verse.titulo_pt_br || '').toLowerCase();
-  
-  if (musicalLower.includes('hamilton') || titleLower.includes('hamilton')) {
-    return 'Hip Hop';
-  } else if (musicalLower.includes('miseráveis') || musicalLower.includes('miserables') || titleLower.includes('miseráveis')) {
-    return 'Drama Musical';
-  } else if (musicalLower.includes('rei leão') || musicalLower.includes('lion king') || titleLower.includes('hakuna')) {
-    return 'Animação';
-  }
-  
-  // Categoria padrão
-  return 'Teatro Musical';
-};
-
 // Função auxiliar para obter uma imagem válida
 const getImageFromVerse = (verse: Verse): string => {
-  return verse.url_imagem || '/musical-generic.svg';
+  return verse.url_imagem || DEFAULT_VERSE_IMAGE;
 };
 
 // Função auxiliar para garantir dados consistentes
 const ensureVerseData = (verse: any) => {
+  // Garantir que apenas versões com títulos válidos sejam processadas
+  const title = verse.titulo_original || verse.titulo_pt_br;
+  if (!title || title.trim() === '') {
+    return null; // Retorna null para versões sem título válido
+  }
+  
   return {
     ...verse,
-    title: verse.titulo_original || verse.titulo_pt_br || 'Título não informado',
+    title: title.trim(),
     artist: verse.musical || 'Artista não informado',
-    image: verse.url_imagem && verse.url_imagem !== 'null' ? verse.url_imagem : '/musical-generic.svg',
+    image: verse.url_imagem && verse.url_imagem !== 'null' ? verse.url_imagem : DEFAULT_VERSE_IMAGE,
     price: verse.valor || 0, // Valor direto do banco
-    views: verse.visualizacoes || 0,
-    category: getCategoryFromVerse(verse),
+    category: verse.estilo && Array.isArray(verse.estilo) && verse.estilo.length > 0 ? verse.estilo[0] : 'Teatro Musical',
     classificacoes: verse.classificacao_vocal_alt
   };
 };
@@ -57,9 +39,8 @@ const MusicGrid = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalVerses, setTotalVerses] = useState(0);
   const [hasMoreData, setHasMoreData] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedStyle, setSelectedStyle] = useState<string>('all-styles');
-  const [selectedSort, setSelectedSort] = useState<string>('popular');
+
+
   const ITEMS_PER_PAGE = 50;
 
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -115,85 +96,26 @@ const MusicGrid = () => {
     }
   };
 
-  // Funções de filtro
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
-  };
 
-  const handleStyleChange = (style: string) => {
-    setSelectedStyle(style);
-  };
 
-  const handleSortChange = (sort: string) => {
-    setSelectedSort(sort);
-  };
+  // Ordenar versos alfabeticamente por titulo_original
+  const sortedVerses = [...verses].sort((a, b) => {
+    const titleA = (a.titulo_original || '').trim();
+    const titleB = (b.titulo_original || '').trim();
+    return titleA.localeCompare(titleB, 'pt-BR', { sensitivity: 'base' });
+  });
 
-  const handleClearFilters = () => {
-    setSelectedCategory('all');
-    setSelectedStyle('all-styles');
-    setSelectedSort('popular');
-  };
-
-  // Filtrar e ordenar versos sem memoização
-  let filteredAndSortedVerses = [...verses];
-
-  // Filtrar por categoria
-  if (selectedCategory !== 'all') {
-    const categoryName = selectedCategory.replace(/-/g, ' ');
-    filteredAndSortedVerses = filteredAndSortedVerses.filter(verse => {
-      const verseCategory = getCategoryFromVerse(verse).toLowerCase();
-      return verseCategory.includes(categoryName.toLowerCase());
-    });
-  }
-
-  // Filtrar por estilo
-  if (selectedStyle !== 'all-styles') {
-    const styleName = selectedStyle.replace(/-/g, ' ');
-    filteredAndSortedVerses = filteredAndSortedVerses.filter(verse => {
-      if (verse.estilo && Array.isArray(verse.estilo) && verse.estilo.length > 0) {
-        return verse.estilo.some(style => 
-          style.toLowerCase().includes(styleName.toLowerCase())
-        );
-      }
-      return false;
-    });
-  }
-
-  // Ordenar
-  switch (selectedSort) {
-    case 'mais-recentes':
-      filteredAndSortedVerses.sort((a, b) => new Date(b.criada_em || '').getTime() - new Date(a.criada_em || '').getTime());
-      break;
-    case 'a-z':
-      filteredAndSortedVerses.sort((a, b) => (a.titulo_pt_br || '').localeCompare(b.titulo_pt_br || ''));
-      break;
-    case 'z-a':
-      filteredAndSortedVerses.sort((a, b) => (b.titulo_pt_br || '').localeCompare(a.titulo_pt_br || ''));
-      break;
-    case 'por-artista':
-      filteredAndSortedVerses.sort((a, b) => (a.musical || '').localeCompare(b.musical || ''));
-      break;
-    case 'mais-populares':
-    default:
-      filteredAndSortedVerses.sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0));
-      break;
-  }
-
-  const displayedVerses = filteredAndSortedVerses;
+  const displayedVerses = sortedVerses;
   const hasMoreVerses = hasMoreData;
 
   if (isLoading) {
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Explorar Músicas</h2>
-            <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
-          </div>
           <div className="flex justify-center items-center py-12">
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <span className="text-gray-600">Carregando versos...</span>
+              <span className="text-gray-600">Carregando versões...</span>
             </div>
           </div>
         </div>
@@ -205,10 +127,6 @@ const MusicGrid = () => {
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Explorar Músicas</h2>
-            <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
-          </div>
           <div className="flex justify-center items-center py-12">
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
@@ -229,12 +147,8 @@ const MusicGrid = () => {
     return (
       <section className="py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Explorar Músicas</h2>
-            <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
-          </div>
           <div className="flex justify-center items-center py-12">
-            <p className="text-gray-600">Nenhum verso encontrado.</p>
+            <p className="text-gray-600">Nenhuma versão encontrada.</p>
           </div>
         </div>
       </section>
@@ -244,21 +158,19 @@ const MusicGrid = () => {
   return (
     <section className="py-8 sm:py-12">
       <div className="container mx-auto px-4 sm:px-6">
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Explorar Músicas</h2>
-          <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
-        </div>
-        
-        <FilterBar
-          onCategoryChange={handleCategoryChange}
-          onStyleChange={handleStyleChange}
-          onSortChange={handleSortChange}
-          onClearFilters={handleClearFilters}
-        />
+
+
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mt-6">
           {displayedVerses.map((verse) => {
             const verseData = ensureVerseData(verse);
+            
+            // Pular versões sem título válido
+            if (!verseData) {
+              console.log('⚠️ Verso ignorado por não ter título válido:', verse.id);
+              return null;
+            }
+            
             console.log('🎵 Renderizando verso:', {
               id: verse.id,
               title: verseData.title,
@@ -274,18 +186,17 @@ const MusicGrid = () => {
                 artist={verseData.artist}
                 image={verseData.image}
                 category={verseData.category}
-                views={verseData.views}
                 price={verseData.price}
                 classificacoes={verseData.classificacoes}
               />
             );
-          })}
+          }).filter(Boolean)}
         </div>
         
         {hasMoreVerses && (
           <div className="flex flex-col items-center mt-8 sm:mt-12 space-y-2">
             <p className="text-sm text-gray-600">
-              Mostrando {verses.length} de {totalVerses} versos
+              Mostrando {verses.length} de {totalVerses} versões
             </p>
             <button
               onClick={handleLoadMore}

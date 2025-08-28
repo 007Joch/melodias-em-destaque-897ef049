@@ -1,4 +1,7 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '../integrations/supabase/client';
+import { sendPurchaseConfirmationEmail } from './emailService';
+
+// E-mail agora é processado via Cloudflare Pages Function
 
 export interface Purchase {
   id: string;
@@ -74,6 +77,36 @@ export const getUserPurchases = async (userId: string): Promise<number[]> => {
   }
 };
 
+// Armazenamento temporário dos dados do carrinho para o webhook
+// Agora com persistência estendida para garantir que o webhook tenha acesso aos dados
+interface CartDataEntry {
+  items: any[];
+  timestamp: number;
+  expiresAt: number;
+}
+
+const cartDataStorage = new Map<string, CartDataEntry>();
+
+// Função para limpar dados expirados automaticamente
+const cleanupExpiredCartData = () => {
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  for (const [paymentId, entry] of cartDataStorage.entries()) {
+    if (now > entry.expiresAt) {
+      cartDataStorage.delete(paymentId);
+      cleanedCount++;
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`🧹 [purchaseService] Limpeza automática: ${cleanedCount} entradas expiradas removidas`);
+  }
+};
+
+// Executar limpeza a cada 10 minutos
+setInterval(cleanupExpiredCartData, 10 * 60 * 1000);
+
 /**
  * Registra uma nova compra
  */
@@ -81,10 +114,27 @@ export const createPurchase = async (
   userId: string,
   items: PurchaseItem[],
   paymentMethod: string,
-  paymentId?: string
+  paymentId?: string,
+  cartItems?: any[]
 ): Promise<string | null> => {
   try {
     console.log('🛒 [purchaseService] Criando compra:', { userId, items, paymentMethod });
+    
+    // Armazenar dados do carrinho se fornecidos com persistência estendida
+    if (cartItems && paymentId) {
+      const cartEntry: CartDataEntry = {
+        items: cartItems,
+        timestamp: Date.now(),
+        // Manter por 45 minutos (tempo estendido para garantir que o webhook processe)
+        expiresAt: Date.now() + (45 * 60 * 1000)
+      };
+      cartDataStorage.set(paymentId, cartEntry);
+      console.log('💾 [purchaseService] Dados do carrinho armazenados com persistência estendida:', {
+        paymentId,
+        itemsCount: cartItems.length,
+        expiresAt: new Date(cartEntry.expiresAt).toISOString()
+      });
+    }
     
     // Criar registros de compra para cada item
     const purchases = items.map(item => ({
@@ -186,12 +236,50 @@ export const updatePurchaseStatus = async (
   try {
     console.log('🔄 [purchaseService] Atualizando status da compra:', { paymentId, status });
     
-    // Buscar as compras antes de atualizar para conceder acesso às versões irmãs
+    // Buscar as compras antes de atualizar para conceder acesso às versões irmãs e enviar e-mail
     const { data: purchases, error: fetchError } = await supabase
       .from('user_purchases')
-      .select('user_id, verse_id, payment_method')
+      .select(`
+        user_id, 
+        verse_id, 
+        payment_method, 
+        amount
+      `)
       .eq('payment_id', paymentId)
       .eq('payment_status', 'pending');
+
+    // Buscar dados do usuário (email e nome) separadamente
+    let userEmail = '';
+    let userName = '';
+    
+    if (purchases && purchases.length > 0) {
+      const userId = purchases[0].user_id;
+      
+      // Buscar nome do usuário
+      const { data: userInfo, error: userInfoError } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', userId)
+        .single();
+      
+      if (!userInfoError && userInfo) {
+        userName = userInfo.name;
+      }
+      
+      // Buscar e-mail do usuário usando a função SQL
+      const { data: emailData, error: emailError } = await supabase
+        .rpc('get_user_email', { user_uuid: userId });
+      
+      if (!emailError && emailData) {
+        userEmail = emailData;
+      }
+      
+      console.log('👤 [purchaseService] Dados do usuário:', {
+        userId,
+        userName,
+        userEmail: userEmail ? '***@***.***' : 'não encontrado'
+      });
+    }
     
     if (fetchError) {
       console.error('❌ [purchaseService] Erro ao buscar compras:', fetchError);
@@ -208,8 +296,9 @@ export const updatePurchaseStatus = async (
       return false;
     }
     
-    // Se a compra foi concluída com sucesso, conceder acesso às versões irmãs
+    // Se a compra foi concluída com sucesso
     if (status === 'completed' && purchases && purchases.length > 0) {
+      // Conceder acesso às versões irmãs
       for (const purchase of purchases) {
         await grantAccessToSiblingVerses(
           purchase.user_id,
@@ -217,6 +306,92 @@ export const updatePurchaseStatus = async (
           purchase.payment_method,
           paymentId
         );
+      }
+      
+      // Enviar e-mail de confirmação
+      try {
+        if (userEmail) {
+          const verseIds = purchases.map(p => p.verse_id);
+          const totalAmount = purchases.reduce((sum, p) => sum + (p.amount || 0), 0);
+          
+          // Os dados dos versos e geração do HTML são processados na Cloudflare Pages Function
+
+          console.log('📧 [purchaseService] Enviando e-mail de confirmação:', {
+            userEmail,
+            userName,
+            verseIds,
+            paymentId,
+            totalAmount
+          });
+          
+          console.log('📧 [purchaseService] Enviando e-mail de confirmação para:', userEmail);
+          
+          // Recuperar dados do carrinho armazenados com verificação de expiração
+          let cartItems: any[] = [];
+          const cartEntry = cartDataStorage.get(paymentId);
+          
+          if (cartEntry) {
+            const now = Date.now();
+            if (now <= cartEntry.expiresAt) {
+              cartItems = cartEntry.items;
+              console.log('📦 [purchaseService] Dados do carrinho recuperados com sucesso:', {
+                paymentId,
+                itemsCount: cartItems.length,
+                timeRemaining: Math.round((cartEntry.expiresAt - now) / 1000 / 60) + ' minutos'
+              });
+            } else {
+              console.log('⏰ [purchaseService] Dados do carrinho expiraram:', {
+                paymentId,
+                expiredAt: new Date(cartEntry.expiresAt).toISOString()
+              });
+              cartDataStorage.delete(paymentId);
+            }
+          } else {
+            console.log('⚠️ [purchaseService] Nenhum dado do carrinho encontrado para:', paymentId);
+          }
+          
+          // Log detalhado dos dados recuperados
+          if (cartItems.length > 0) {
+            console.log('📦 [purchaseService] Dados detalhados do carrinho:', {
+              paymentId,
+              cartItemsCount: cartItems.length,
+              cartItems: cartItems.map(item => ({ id: item.id, title: item.title, price: item.price }))
+            });
+          }
+          
+          // Chamar o serviço de e-mail (Cloudflare Pages Function)
+          const emailSent = await sendPurchaseConfirmationEmail(
+            userEmail,
+            userName,
+            cartItems,
+            paymentId,
+            totalAmount
+          );
+          
+          if (!emailSent) {
+            console.error('❌ [purchaseService] Falha ao enviar e-mail de confirmação');
+            // Manter dados do carrinho para nova tentativa
+            console.log('🔄 [purchaseService] Mantendo dados do carrinho para possível nova tentativa');
+          } else {
+            console.log('✅ [purchaseService] E-mail enviado com sucesso');
+            
+            // Limpar dados do carrinho apenas após sucesso do e-mail
+            // Mas manter por mais alguns minutos como backup
+            if (cartItems.length > 0) {
+              setTimeout(() => {
+                cartDataStorage.delete(paymentId);
+                console.log('🗑️ [purchaseService] Dados do carrinho removidos da memória após delay de segurança');
+              }, 5 * 60 * 1000); // 5 minutos de delay
+              
+              console.log('⏰ [purchaseService] Dados do carrinho serão removidos em 5 minutos');
+            }
+          }
+        } else {
+          console.warn('⚠️ [purchaseService] E-mail do usuário não encontrado para envio de confirmação');
+        }
+      } catch (emailError) {
+        console.error('❌ [purchaseService] Erro ao enviar e-mail de confirmação:', emailError);
+        // Não falhar a operação se o e-mail não for enviado
       }
     }
     

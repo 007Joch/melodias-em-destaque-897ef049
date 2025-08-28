@@ -1,5 +1,6 @@
-import { supabase } from '../integrations/supabase/client';
+import { supabase, supabaseAdmin } from '../integrations/supabase/client';
 import { Database } from '../integrations/supabase/types';
+import { DEFAULT_VERSE_IMAGE } from '@/constants/images';
 
 export type Verse = Database['public']['Tables']['versoes']['Row'];
 type VerseInsert = Database['public']['Tables']['versoes']['Insert'];
@@ -18,7 +19,10 @@ export interface VerseFormData {
   titulo_pt_br: string;
   titulo_original?: string;
   musical: string;
-  estilo: string;
+  estilo: string[];
+  natureza: string[];
+  dificuldade: number[];
+  classificacao_vocal_alt: string[];
   valor: number;
   
   // Conteúdo e mídia
@@ -26,6 +30,14 @@ export interface VerseFormData {
   imageFile?: File;
   imageUrl?: string;
   audioOriginal?: string;
+  
+  // Propriedades adicionais
+  ano_gravacao?: number;
+  elenco?: string;
+  atualizada_em?: string;
+  audio_instrumental?: string;
+  audio_original?: string;
+  versoes_irmas?: number[];
 }
 
 // Função para processar e formatar valores monetários
@@ -234,7 +246,7 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
     
     console.log('💰 Valor processado:', { original: formData.valor, processed: processedValue });
 
-    // Usar o titulo_original fornecido ou o titulo_pt_br como fallback
+    // Usar apenas o titulo_original fornecido
     const tituloOriginal = formData.titulo_original || formData.titulo_pt_br;
     
     const verseData: VerseInsert = {
@@ -250,15 +262,23 @@ export const createVerse = async (formData: VerseFormData): Promise<Verse | null
       versionista: formData.versionista ? [formData.versionista] : null,
       revisao: formData.revisao ? [formData.revisao] : null,
       versionado_em: formData.versionadoEm,
+      ano_gravacao: formData.ano_gravacao || null,
+      elenco: formData.elenco || null,
       
       // Informações do produto
-      estilo: formData.estilo ? [formData.estilo] : null,
+      estilo: formData.estilo && formData.estilo.length > 0 ? formData.estilo : null,
+      natureza: formData.natureza && formData.natureza.length > 0 ? formData.natureza : null,
+      dificuldade: formData.dificuldade && formData.dificuldade.length > 0 ? formData.dificuldade[0] : null,
+      classificacao_vocal_alt: formData.classificacao_vocal_alt && formData.classificacao_vocal_alt.length > 0 ? formData.classificacao_vocal_alt : null,
       valor: processedValue, // Valor processado
       
       // Conteúdo e mídia
       conteudo: formData.conteudo || null,
       url_imagem: imageUrl || null,
       audio_original: formData.audioOriginal || null,
+      
+      // Versões irmãs
+      versoes_irmas: formData.versoes_irmas && formData.versoes_irmas.length > 0 ? formData.versoes_irmas : null,
       
       // Valores padrão
       status: 'active',
@@ -349,11 +369,16 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
     const totalRecords = count || 0;
     console.log(`📊 Total de registros na base (dados frescos): ${totalRecords}`);
     
-    // Buscar os dados paginados (forçando dados frescos)
+    // Buscar os dados paginados (forçando dados frescos) em ordem alfabética estável
     const { data, error } = await supabase
       .from('versoes')
       .select('*')
-      .order('id', { ascending: false })
+      // 1) Ordena por titulo_original crescente (nulos por último)
+      .order('titulo_original', { ascending: true, nullsFirst: false })
+      // 2) Fallback por titulo_pt_br crescente (nulos por último)
+      .order('titulo_pt_br', { ascending: true, nullsFirst: false })
+      // 3) Desempate estável por id crescente
+      .order('id', { ascending: true })
       .range(offset, offset + limit - 1);
     
     if (error) {
@@ -382,25 +407,21 @@ export const getVersesPaginated = async (page: number = 1, limit: number = 50): 
 // Função para buscar todos os versos (mantida para compatibilidade)
 export const getAllVerses = async (): Promise<any[]> => {
   try {
-    console.log('Buscando todos os versos ativos da tabela versoes...');
+    console.log('Buscando todos os versos da tabela versoes...');
     
-    // Buscar apenas os primeiros registros para garantir que algo seja retornado
-    const { data: simpleData, error: simpleError } = await supabase
+    // Buscar TODOS os registros sem limitação
+    const { data, error } = await supabase
       .from('versoes')
       .select('*')
-      .range(0, 49);
+      .order('id', { ascending: false });
       
-    if (simpleError) {
-      console.error('Erro na busca simples:', simpleError);
+    if (error) {
+      console.error('Erro ao buscar todos os versos:', error);
       return [];
-    } else {
-      console.log(`Registros encontrados na busca simples: ${simpleData?.length || 0}`);
-      if (simpleData && simpleData.length > 0) {
-        return processVerseData(simpleData);
-      }
     }
     
-    return [];
+    console.log(`Total de registros encontrados: ${data?.length || 0}`);
+    return data ? processVerseData(data) : [];
   } catch (error) {
     console.error('Erro ao buscar versos:', error);
     return [];
@@ -413,17 +434,17 @@ const processVerseData = (data: any[]) => {
   
   // Mapear os dados da tabela versoes para o formato esperado
   const mappedData = data.map(verso => {
-    // Determinar a categoria com base no estilo
-    let category = 'Teatro Musical';
-    if (Array.isArray(verso.estilo) && verso.estilo.length > 0) {
-      category = verso.estilo[0];
+    // Determinar a categoria com base apenas na classificacao_vocal_alt
+    let category = '';
+    if (Array.isArray(verso.classificacao_vocal_alt) && verso.classificacao_vocal_alt.length > 0) {
+      category = verso.classificacao_vocal_alt.join(', ');
     }
     
     // Usar valor direto do banco
     const priceInReais = verso.valor || 0;
     
     // Garantir que a URL da imagem seja válida
-    let imageUrl = '/musical-generic.svg';
+    let imageUrl = DEFAULT_VERSE_IMAGE;
     if (verso.url_imagem && verso.url_imagem.trim() !== '' && verso.url_imagem !== 'null') {
       imageUrl = verso.url_imagem;
     }
@@ -444,6 +465,8 @@ const processVerseData = (data: any[]) => {
       titulo_original: verso.titulo_original,
       musical: verso.musical,
       estilo: verso.estilo || [],
+      natureza: verso.natureza || [],
+      dificuldade: verso.dificuldade ? [verso.dificuldade] : [],
       url_imagem: imageUrl,
       visualizacoes: verso.visualizacoes || 0,
       valor: priceInReais,
@@ -516,11 +539,10 @@ export const getVerseBySlug = async (slug: string): Promise<Verse | null> => {
   try {
     console.log('🔍 Buscando verso por slug:', slug);
     
-    // Buscar todos os versos ativos
+    // Buscar todos os versos (sem filtrar por status) para permitir acesso a versões compradas
     const { data, error } = await supabase
       .from('versoes')
-      .select('*')
-      .eq('status', 'active');
+      .select('*'); // Removido filtro de status para permitir acesso a versões compradas mesmo inativas
 
     if (error) {
       console.error('❌ Erro ao buscar versos para slug:', error);
@@ -528,7 +550,7 @@ export const getVerseBySlug = async (slug: string): Promise<Verse | null> => {
     }
 
     if (!data || data.length === 0) {
-      console.log('❌ Nenhum verso ativo encontrado');
+      console.log('❌ Nenhum verso encontrado');
       return null;
     }
 
@@ -583,7 +605,7 @@ export const getVerse = async (identifier: string): Promise<Verse | null> => {
 // Função para buscar versos por texto
 export const searchVerses = async (searchTerm: string, limit: number = 10): Promise<{ exact: Verse | null, similar: Verse[] }> => {
   try {
-    console.log(`Buscando versos com termo: "${searchTerm}"`);
+    console.log(`🔍 Buscando versos com termo: "${searchTerm}"`);
     
     if (!searchTerm.trim()) {
       return { exact: null, similar: [] };
@@ -591,44 +613,113 @@ export const searchVerses = async (searchTerm: string, limit: number = 10): Prom
 
     const searchTermLower = searchTerm.toLowerCase().trim();
     
-    // Buscar verso exato por título
-    const { data: exactMatch, error: exactError } = await supabase
+    // 1ª PRIORIDADE: Busca exata no título original
+    console.log('🎯 1ª Prioridade: Buscando correspondência exata no título original...');
+    const { data: exactOriginalMatches, error: exactOriginalError } = await supabase
       .from('versoes')
       .select('*')
-      .or(`titulo_original.ilike."${searchTermLower}",titulo_pt_br.ilike."${searchTermLower}"`)
-      .limit(1)
-      .single();
+      .eq('status', 'active')
+      .ilike('titulo_original', searchTermLower)
+      .limit(1);
 
-    if (exactError && exactError.code !== 'PGRST116') {
-      console.error('Erro ao buscar verso exato:', exactError);
+    if (exactOriginalError) {
+      console.error('❌ Erro ao buscar título original exato:', exactOriginalError);
     }
 
-    // Buscar versos similares
-    const { data: similarMatches, error: similarError } = await supabase
+    let exactMatch = exactOriginalMatches && exactOriginalMatches.length > 0 ? exactOriginalMatches[0] : null;
+    
+    // 2ª PRIORIDADE: Se não encontrou exato no título original, buscar em títulos alternativos
+    if (!exactMatch) {
+      console.log('🔄 2ª Prioridade: Buscando em títulos alternativos...');
+      const { data: allVerses, error: allVersesError } = await supabase
+        .from('versoes')
+        .select('*')
+        .eq('status', 'active')
+        .not('titulo_alt', 'is', null);
+
+      if (!allVersesError && allVerses) {
+        // Buscar correspondência exata em titulo_alt
+        exactMatch = allVerses.find(verse => {
+          if (Array.isArray(verse.titulo_alt)) {
+            return verse.titulo_alt.some(alt => 
+              alt && alt.toLowerCase().trim() === searchTermLower
+            );
+          }
+          return false;
+        }) || null;
+        
+        if (exactMatch) {
+          console.log('✅ Encontrado em título alternativo:', exactMatch.titulo_original);
+        }
+      }
+    } else {
+      console.log('✅ Encontrado título original exato:', exactMatch.titulo_original);
+    }
+
+    // 3ª PRIORIDADE: Busca por musical (agrupamento alfabético)
+    console.log('🎭 3ª Prioridade: Verificando busca por musical...');
+    const { data: musicalMatches, error: musicalError } = await supabase
       .from('versoes')
       .select('*')
-      .or(`titulo_original.ilike."%${searchTermLower}%",titulo_pt_br.ilike."%${searchTermLower}%",musical.ilike."%${searchTermLower}%",compositor.ilike."%${searchTermLower}%",conteudo.ilike."%${searchTermLower}%"`)
-      .limit(limit)
-      .order('visualizacoes', { ascending: false });
+      .eq('status', 'active')
+      .ilike('musical', `%${searchTermLower}%`)
+      .order('titulo_original', { ascending: true })
+      .limit(limit * 2);
 
-    if (similarError) {
-      console.error('Erro ao buscar versos similares:', similarError);
-      return { exact: exactMatch || null, similar: [] };
+    let musicalResults: Verse[] = [];
+    if (!musicalError && musicalMatches) {
+      // Filtrar resultados do musical, removendo o match exato se existir
+      musicalResults = musicalMatches.filter(verse => 
+        !exactMatch || verse.id !== exactMatch.id
+      );
+      console.log(`🎵 Encontrados ${musicalResults.length} resultados por musical`);
     }
 
-    // Filtrar o resultado exato dos similares para evitar duplicação
-    const filteredSimilar = similarMatches?.filter(verse => 
-      exactMatch ? verse.id !== exactMatch.id : true
-    ) || [];
+    // 4ª PRIORIDADE: Resultados similares (caracteres correspondentes)
+    console.log('🔍 4ª Prioridade: Buscando resultados similares...');
+    const { data: allVersesForSimilar, error: similarError } = await supabase
+      .from('versoes')
+      .select('*')
+      .eq('status', 'active')
+      .limit(limit * 3);
 
-    console.log(`Encontrados: ${exactMatch ? '1 exato' : '0 exato'}, ${filteredSimilar.length} similares`);
+    let similarResults: Verse[] = [];
+    if (!similarError && allVersesForSimilar) {
+      similarResults = allVersesForSimilar.filter(verse => {
+        // Remover o match exato e resultados de musical já incluídos
+        if (exactMatch && verse.id === exactMatch.id) return false;
+        if (musicalResults.some(mr => mr.id === verse.id)) return false;
+        
+        // Verificar se contém caracteres correspondentes
+        const titleOriginal = (verse.titulo_original || '').toLowerCase();
+        const titlePtBr = (verse.titulo_pt_br || '').toLowerCase();
+        
+        // Verificar titulo_alt (array)
+        const titleAltMatch = Array.isArray(verse.titulo_alt) 
+          ? verse.titulo_alt.some(alt => 
+              alt && alt.toLowerCase().includes(searchTermLower)
+            )
+          : false;
+        
+        return titleOriginal.includes(searchTermLower) || 
+               titlePtBr.includes(searchTermLower) || 
+               titleAltMatch;
+      });
+      
+      console.log(`📝 Encontrados ${similarResults.length} resultados similares`);
+    }
+
+    // Combinar resultados: musical + similares, limitando o total
+    const combinedSimilar = [...musicalResults, ...similarResults].slice(0, limit);
+
+    console.log(`📊 Resultado final: ${exactMatch ? '1 exato' : '0 exato'}, ${combinedSimilar.length} similares`);
     
     return {
       exact: exactMatch || null,
-      similar: filteredSimilar
+      similar: combinedSimilar
     };
   } catch (error) {
-    console.error('Erro ao buscar versos:', error);
+    console.error('❌ Erro ao buscar versos:', error);
     return { exact: null, similar: [] };
   }
 };
@@ -702,8 +793,14 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
     if (formData.versionadoEm !== undefined) {
       updateData.versionado_em = formData.versionadoEm || null;
     }
+    if (formData.ano_gravacao !== undefined) {
+      updateData.ano_gravacao = formData.ano_gravacao || null;
+    }
+    if (formData.elenco !== undefined) {
+      updateData.elenco = formData.elenco || null;
+    }
     if (formData.titulo_pt_br !== undefined) {
-      updateData.titulo_pt_br = formData.titulo_pt_br || 'Título não informado';
+      updateData.titulo_pt_br = formData.titulo_pt_br || '';
     }
     
     if (formData.titulo_original !== undefined) {
@@ -713,7 +810,16 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
       updateData.musical = formData.musical || 'Musical não informado';
     }
     if (formData.estilo !== undefined) {
-      updateData.estilo = formData.estilo ? [formData.estilo] : null;
+      updateData.estilo = formData.estilo && formData.estilo.length > 0 ? formData.estilo : null;
+    }
+    if (formData.natureza !== undefined) {
+      updateData.natureza = formData.natureza && formData.natureza.length > 0 ? formData.natureza : null;
+    }
+    if (formData.dificuldade !== undefined) {
+      updateData.dificuldade = formData.dificuldade && formData.dificuldade.length > 0 ? formData.dificuldade[0] : null;
+    }
+    if (formData.classificacao_vocal_alt !== undefined) {
+      updateData.classificacao_vocal_alt = formData.classificacao_vocal_alt && formData.classificacao_vocal_alt.length > 0 ? formData.classificacao_vocal_alt : null;
     }
     if (formData.valor !== undefined) {
       updateData.valor = processMonetaryValue(formData.valor); // Usar valor processado diretamente
@@ -726,6 +832,9 @@ export const updateVerse = async (id: number, formData: Partial<VerseFormData>):
     }
     if (formData.audioOriginal !== undefined) {
       updateData.audio_original = formData.audioOriginal || null;
+    }
+    if (formData.versoes_irmas !== undefined) {
+      updateData.versoes_irmas = formData.versoes_irmas && formData.versoes_irmas.length > 0 ? formData.versoes_irmas : null;
     }
 
     console.log('Valor da imageUrl antes de atualizar:', imageUrl);
@@ -958,25 +1067,7 @@ export const deleteAllVerses = async (): Promise<boolean> => {
   }
 };
 
-// Função para incrementar visualizações
-export const incrementViews = async (id: number): Promise<void> => {
-  try {
-    const { error } = await supabase.rpc('increment_verse_views', { verse_id: id });
-    
-    if (error) {
-      // Fallback: buscar o verso atual e incrementar manualmente
-      const verse = await getVerseById(id);
-      if (verse) {
-        await supabase
-          .from('versoes')
-          .update({ visualizacoes: (verse.visualizacoes || 0) + 1 })
-          .eq('id', id);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Erro ao incrementar visualizações:', error);
-  }
-};
+
 
 // Função para buscar versos por categoria (usando estilo)
 export const getVersesByCategory = async (category: string): Promise<Verse[]> => {
@@ -1044,8 +1135,16 @@ export const getVersesByIds = async (ids: number[]): Promise<Verse[]> => {
   }
 };
 
+// Tipo para busca simplificada de versos
+export type VerseSearchResult = {
+  id: number;
+  titulo_original: string | null;
+  titulo_pt_br: string;
+  musical: string;
+};
+
 // Função para buscar versos pelo título original (para versões irmãs)
-export const searchVersesByTitle = async (searchTerm: string): Promise<Verse[]> => {
+export const searchVersesByTitle = async (searchTerm: string): Promise<VerseSearchResult[]> => {
   try {
     console.log(`🔍 Iniciando busca por título: "${searchTerm}"`);
     
@@ -1066,6 +1165,39 @@ export const searchVersesByTitle = async (searchTerm: string): Promise<Verse[]> 
     return data || [];
   } catch (error) {
     console.error('❌ Erro inesperado ao buscar versos por título:', error);
+    throw error;
+  }
+};
+
+// Função para buscar versões irmãs por título original
+export const searchSisterVerses = async (searchTerm: string, excludeId?: number): Promise<VerseSearchResult[]> => {
+  try {
+    console.log(`🔍 Buscando versões irmãs para: "${searchTerm}"`);
+    
+    let query = supabase
+      .from('versoes')
+      .select('id, titulo_original, titulo_pt_br, musical')
+      .ilike('titulo_original', `%${searchTerm}%`)
+      .eq('status', 'active')
+      .order('titulo_original')
+      .limit(10);
+    
+    // Excluir a versão atual se um ID for fornecido
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('❌ Erro ao buscar versões irmãs:', error);
+      throw error;
+    }
+
+    console.log(`✅ Busca de versões irmãs concluída - ${data?.length || 0} resultados encontrados`);
+    return data || [];
+  } catch (error) {
+    console.error('❌ Erro inesperado ao buscar versões irmãs:', error);
     throw error;
   }
 };
@@ -1120,20 +1252,20 @@ export const getAllUsers = async () => {
 // Função para atualizar o role de um usuário
 export const updateUserRole = async (userId: string, newRole: string) => {
   try {
-    console.log(`🔄 Atualizando role do usuário ${userId} para ${newRole}...`);
+    console.log('🔄 Atualizando role do usuário:', { userId, newRole });
     
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ role: newRole })
-      .eq('id', userId)
-      .select();
+    // Usando RPC para atualizar com privilégios administrativos
+    const { data, error } = await supabase.rpc('update_user_role_admin', {
+      user_id: userId,
+      new_role: newRole
+    });
 
     if (error) {
       console.error('❌ Erro ao atualizar role:', error);
       throw error;
     }
 
-    console.log('✅ Role atualizado com sucesso');
+    console.log('✅ Role atualizada com sucesso:', data);
     return data;
   } catch (error) {
     console.error('❌ Erro geral ao atualizar role:', error);
@@ -1146,7 +1278,7 @@ export const updateUserEmail = async (userId: string, newEmail: string) => {
   try {
     console.log(`📧 Atualizando email do usuário ${userId}...`);
     
-    const { data, error } = await supabase.auth.admin.updateUserById(
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
       { email: newEmail }
     );
@@ -1169,7 +1301,7 @@ export const updateUserPassword = async (userId: string, newPassword: string) =>
   try {
     console.log(`🔐 Atualizando senha do usuário ${userId}...`);
     
-    const { data, error } = await supabase.auth.admin.updateUserById(
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
       { password: newPassword }
     );
@@ -1184,5 +1316,117 @@ export const updateUserPassword = async (userId: string, newPassword: string) =>
   } catch (error) {
     console.error('❌ Erro geral ao atualizar senha:', error);
     throw error;
+  }
+};
+
+// Função para atualizar status da conta de um usuário
+export const updateUserAccountStatus = async (userId: string, newStatus: string) => {
+  try {
+    console.log(`🔄 Atualizando status da conta do usuário ${userId} para ${newStatus}...`);
+    
+    const { data, error } = await supabase.rpc('update_user_account_status', {
+      user_id: userId,
+      new_status: newStatus
+    });
+
+    if (error) {
+      console.error('❌ Erro ao atualizar status da conta:', error);
+      throw error;
+    }
+
+    console.log('✅ Status da conta atualizado com sucesso');
+    return data;
+  } catch (error) {
+    console.error('❌ Erro geral ao atualizar status da conta:', error);
+    throw error;
+  }
+};
+
+// Função para atualizar informações de membresia do usuário
+export const updateUserMembership = async (
+  userId: string,
+  startedAt: string | null,
+  expiresAt: string | null,
+  lifetime: boolean
+) => {
+  try {
+    console.log(`🔄 Atualizando membresia do usuário ${userId}...`, { startedAt, expiresAt, lifetime });
+
+    const { data, error } = await supabase.rpc('update_user_membership', {
+      user_id: userId,
+      started_at: startedAt,
+      expires_at: expiresAt,
+      lifetime
+    });
+
+    if (error) {
+      console.error('❌ Erro ao atualizar membresia:', error);
+      throw error;
+    }
+
+    console.log('✅ Membresia atualizada com sucesso');
+    return data;
+  } catch (error) {
+    console.error('❌ Erro geral ao atualizar membresia:', error);
+    throw error;
+  }
+};
+
+ // Função para deletar um usuário
+ export const deleteUser = async (userId: string) => {
+  try {
+    console.log(`🗑️ Deletando usuário ${userId}...`);
+    
+    const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (error) {
+      console.error('❌ Erro ao deletar usuário:', error);
+      throw error;
+    }
+
+    console.log('✅ Usuário deletado com sucesso');
+    return data;
+  } catch (error) {
+    console.error('❌ Erro geral ao deletar usuário:', error);
+    throw error;
+  }
+};
+
+// Função para buscar versos relacionados
+export const getRelatedVerses = async (verseId: number): Promise<Verse[]> => {
+  try {
+    console.log('🔍 Buscando versos relacionados para o verso:', verseId);
+    
+    // Primeiro, buscar o verso atual para obter informações para relacionar
+    const { data: currentVerse, error: currentError } = await supabase
+      .from('versoes')
+      .select('musical, estilo')
+      .eq('id', verseId)
+      .single();
+
+    if (currentError || !currentVerse) {
+      console.log('⚠️ Não foi possível encontrar o verso atual para buscar relacionados');
+      return [];
+    }
+
+    // Buscar versos do mesmo musical, excluindo o verso atual
+    const { data: relatedVerses, error } = await supabase
+      .from('versoes')
+      .select('*')
+      .eq('musical', currentVerse.musical)
+      .neq('id', verseId)
+      .eq('status', 'active')
+      .limit(6);
+
+    if (error) {
+      console.error('❌ Erro ao buscar versos relacionados:', error);
+      return [];
+    }
+
+    console.log('✅ Versos relacionados encontrados:', relatedVerses?.length || 0);
+    return relatedVerses || [];
+  } catch (error) {
+    console.error('❌ Erro geral ao buscar versos relacionados:', error);
+    return [];
   }
 };

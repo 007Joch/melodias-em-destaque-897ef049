@@ -1,10 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Music, Eye, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Music, Star, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Verse } from '../services/versesService';
+import { DEFAULT_VERSE_IMAGE } from '@/constants/images';
 
 interface SearchResultsProps {
   searchTerm: string;
@@ -19,10 +20,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   similarResults,
   onClose
 }) => {
-  const formatPrice = (price: number | null) => {
-    if (!price || price === 0) return 'Gratuito';
-    return `R$ ${price.toFixed(2).replace('.', ',')}`;
-  };
+  const navigate = useNavigate();
 
   const isValidData = (data: any) => {
     return data && data !== '' && data !== null && data !== undefined;
@@ -30,6 +28,74 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 
   const displayData = (data: any, fallback: string = 'Dados inconsistentes') => {
     return isValidData(data) ? data : fallback;
+  };
+
+  // Função para obter o título mais relevante baseado na busca
+  const getRelevantTitle = (verse: Verse) => {
+    const searchTermLower = searchTerm.toLowerCase().trim();
+    
+    // Verificar se o termo pesquisado corresponde ao título original
+    if (verse.titulo_original && verse.titulo_original.toLowerCase() === searchTermLower) {
+      return verse.titulo_original;
+    }
+    
+    // Verificar se corresponde a algum título alternativo
+    if (Array.isArray(verse.titulo_alt)) {
+      const matchingAlt = verse.titulo_alt.find(alt => 
+        alt && alt.toLowerCase().trim() === searchTermLower
+      );
+      if (matchingAlt) {
+        return matchingAlt;
+      }
+      
+      // Se não há correspondência exata, verificar se contém o termo
+      const containingAlt = verse.titulo_alt.find(alt => 
+        alt && alt.toLowerCase().includes(searchTermLower)
+      );
+      if (containingAlt) {
+        return containingAlt;
+      }
+    }
+    
+    // Fallback para título original
+    return verse.titulo_original || verse.titulo_pt_br;
+  };
+
+  // Função para verificar se deve mostrar título original como secundário
+  const shouldShowOriginalAsSecondary = (verse: Verse, relevantTitle: string) => {
+    return relevantTitle !== verse.titulo_original && verse.titulo_original;
+  };
+
+  // Função para obter imagem válida (baseada no MusicCard)
+  const getValidImage = (image: string | null) => {
+    if (!image || image.trim() === '' || image === 'null') {
+      return DEFAULT_VERSE_IMAGE;
+    }
+    
+    if (image.includes('/capas/') || image.includes('supabase.co') || image.includes('hlrcvvaneofcpncbqjyg')) {
+      return image;
+    }
+    
+    if (image.startsWith('http')) {
+      return image;
+    }
+    
+    return DEFAULT_VERSE_IMAGE;
+  };
+
+  const handleVerseClick = (verseId: number, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    console.log('Clicando no verso:', verseId);
+    onClose();
+    navigate(`/preview/${verseId}`);
+  };
+
+  const handleShowMoreResults = () => {
+    onClose();
+    navigate(`/busca?q=${encodeURIComponent(searchTerm)}`);
   };
 
   if (!searchTerm.trim()) {
@@ -65,47 +131,55 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                   <Star className="w-4 h-4 mr-1 text-yellow-500" />
                   Resultado Exato
                 </h4>
-                <Link 
-                  to={`/verse/${exactMatch.id}`} 
-                  onClick={onClose}
-                  className="block"
+                <Card 
+                  onClick={(e) => handleVerseClick(exactMatch.id, e)}
+                  className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white cursor-pointer"
                 >
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-start space-x-4">
-                        {isValidData(exactMatch.url_imagem) && (
-                          <img
-                            src={exactMatch.url_imagem}
-                            alt={displayData(exactMatch.titulo_pt_br)}
-                            className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h5 className="font-semibold text-gray-900 truncate">
-                            {displayData(exactMatch.titulo_pt_br)}
-                          </h5>
-                          <p className="text-sm text-gray-600 truncate">
-                            {displayData(exactMatch.musical)} • {displayData(exactMatch.compositor)}
-                          </p>
-                          <div className="flex items-center justify-between mt-2">
-                            <Badge variant="secondary" className="text-xs">
-                              {displayData(exactMatch.estilo)}
-                            </Badge>
-                            <div className="flex items-center space-x-3 text-xs text-gray-500">
-                              <span className="flex items-center">
-                                <Eye className="w-3 h-3 mr-1" />
-                                {exactMatch.visualizacoes || 0}
-                              </span>
-                              <span className="font-medium text-primary">
-                                {formatPrice(exactMatch.valor || 0)} {/* Valor direto do banco */}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                  <div className="flex p-4">
+                    {/* Coluna da imagem */}
+                    <div className="flex flex-col items-center mr-4">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                        <img
+                          src={getValidImage(exactMatch.url_imagem)}
+                          alt={displayData(exactMatch.titulo_original, 'Título não disponível')}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null;
+                            target.src = DEFAULT_VERSE_IMAGE;
+                          }}
+                        />
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                    </div>
+                    
+                    {/* Conteúdo principal */}
+                    <div className="flex-1 min-w-0">
+                      {(() => {
+                        const relevantTitle = getRelevantTitle(exactMatch);
+                        const showOriginalAsSecondary = shouldShowOriginalAsSecondary(exactMatch, relevantTitle);
+                        
+                        return (
+                          <>
+                            {/* Título mais relevante (principal) */}
+                            <h3 className="font-bold text-gray-900 text-base sm:text-lg hover:text-primary transition-colors mb-1">
+                              {displayData(relevantTitle, 'Título não disponível')}
+                            </h3>
+                            {/* Título original como secundário (se diferente do relevante) */}
+                            {showOriginalAsSecondary && (
+                              <p className="text-sm text-gray-600 mb-1 line-clamp-1">
+                                <span className="text-xs text-gray-500">Título original:</span> {exactMatch.titulo_original}
+                              </p>
+                            )}
+                            {/* Musical */}
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-1">
+                              {displayData(exactMatch.musical, 'Musical não informado')}
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </Card>
               </div>
             )}
 
@@ -117,50 +191,72 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                 </h4>
                 <div className="space-y-2">
                   {similarResults.map((verse) => (
-                    <Link 
+                    <Card 
                       key={verse.id} 
-                      to={`/verse/${verse.id}`} 
-                      onClick={onClose}
-                      className="block"
+                      onClick={(e) => handleVerseClick(verse.id, e)}
+                      className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white cursor-pointer"
                     >
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                        <CardContent className="p-3">
-                          <div className="flex items-start space-x-3">
-                            {isValidData(verse.url_imagem) && (
-                          <img
-                            src={verse.url_imagem}
-                                alt={displayData(verse.titulo_pt_br)}
-                                className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                              />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <h6 className="font-medium text-gray-900 truncate text-sm">
-                                {displayData(verse.titulo_pt_br)}
-                              </h6>
-                              <p className="text-xs text-gray-600 truncate">
-                                {displayData(verse.musical)} • {displayData(verse.compositor)}
-                              </p>
-                              <div className="flex items-center justify-between mt-1">
-                                <Badge variant="outline" className="text-xs px-1 py-0">
-                                  {displayData(verse.estilo)}
-                                </Badge>
-                                <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                  <span className="flex items-center">
-                                    <Eye className="w-3 h-3 mr-1" />
-                                    {verse.visualizacoes || 0}
-                                  </span>
-                                  <span className="font-medium text-primary">
-                                    {formatPrice(verse.valor || 0)} {/* Valor direto do banco */}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                      <div className="flex p-3">
+                        {/* Coluna da imagem */}
+                        <div className="flex flex-col items-center mr-3">
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                            <img
+                              src={getValidImage(verse.url_imagem)}
+                              alt={displayData(verse.titulo_original, 'Título não disponível')}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.onerror = null;
+                                target.src = DEFAULT_VERSE_IMAGE;
+                              }}
+                            />
                           </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                        </div>
+                        
+                        {/* Conteúdo principal */}
+                        <div className="flex-1 min-w-0">
+                          {(() => {
+                            const relevantTitle = getRelevantTitle(verse);
+                            const showOriginalAsSecondary = shouldShowOriginalAsSecondary(verse, relevantTitle);
+                            
+                            return (
+                              <>
+                                {/* Título mais relevante (principal) */}
+                                <h4 className="font-bold text-gray-900 text-sm hover:text-primary transition-colors mb-1">
+                                  {displayData(relevantTitle, 'Título não disponível')}
+                                </h4>
+                                {/* Título original como secundário (se diferente do relevante) */}
+                                {showOriginalAsSecondary && (
+                                  <p className="text-xs text-gray-600 mb-1 line-clamp-1">
+                                    <span className="text-xs text-gray-500">Título original:</span> {verse.titulo_original}
+                                  </p>
+                                )}
+                                {/* Musical */}
+                                <p className="text-xs text-gray-600 mb-1 line-clamp-1">
+                                  {displayData(verse.musical, 'Musical não informado')}
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </Card>
                   ))}
                 </div>
+              </div>
+            )}
+            
+            {/* Botão para exibir mais resultados */}
+            {hasResults && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <Button 
+                  onClick={handleShowMoreResults}
+                  variant="outline" 
+                  className="w-full flex items-center justify-center gap-2 text-primary hover:text-primary-dark"
+                >
+                  <span>Exibir mais resultados encontrados</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
             )}
           </div>

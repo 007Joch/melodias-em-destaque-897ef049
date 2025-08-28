@@ -177,53 +177,59 @@ const CheckoutFlow = ({ onBack, onComplete }: CheckoutFlowProps) => {
     setCurrentStep('payment');
   };
 
-  const initializeMercadoPago = () => {
-    return new Promise((resolve) => {
-      if (window.MercadoPago) {
-        resolve(window.MercadoPago);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://sdk.mercadopago.com/js/v2';
-      script.onload = () => {
-        window.MercadoPago.setPublishableKey('TEST-d72e3d17-e94f-4af6-a1e0-20b5be84c593');
-        resolve(window.MercadoPago);
-      };
-      document.head.appendChild(script);
-    });
+  const initializeMercadoPago = async () => {
+    try {
+      const MercadoPagoService = (await import('@/services/mercadoPagoService')).default;
+      await MercadoPagoService.loadMercadoPagoSDK();
+      return MercadoPagoService;
+    } catch (error) {
+      console.error('Erro ao inicializar Mercado Pago:', error);
+      throw error;
+    }
   };
 
   const createPixPayment = async () => {
     setLoading(true);
     try {
-      // Importar dinamicamente o serviço do Mercado Pago
-      const MercadoPagoService = (await import('@/services/mercadoPagoService')).default;
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const MercadoPagoService = await initializeMercadoPago();
       
-      const paymentData = {
-        amount: totalPrice,
-        description: `Compra de ${items.length} verso(s) - Musical em Bom Português`,
-        payer_email: user?.email || 'cliente@musical.com',
+      const preferenceData = {
         items: items.map(item => ({
+          id: item.id || '',
           title: item.title || 'Verso Musical',
           quantity: item.quantity,
           unit_price: item.price
-        }))
+        })),
+        payer: {
+          email: user?.email || 'cliente@musical.com'
+        },
+        payment_methods: {
+          excluded_payment_types: [
+            { id: 'credit_card' },
+            { id: 'debit_card' },
+            { id: 'ticket' }
+          ],
+          installments: 1
+        },
+        back_urls: {
+          success: `${window.location.origin}/checkout/success`,
+          failure: `${window.location.origin}/checkout/failure`,
+          pending: `${window.location.origin}/checkout/pending`
+        },
+        auto_return: 'approved'
       };
 
-      const result = await MercadoPagoService.createPixPayment(paymentData);
+      const result = await MercadoPagoService.createPaymentPreference(preferenceData);
       
-      if (result.success) {
-        setPixQrCode(result.qr_code_base64 || '');
-        setPixCopyPaste(result.qr_code || '');
-        setPaymentId(result.payment_id || '');
-        
-        // Iniciar polling para verificar pagamento
-        if (result.payment_id) {
-          startPaymentPolling(result.payment_id);
-        }
+      if (result.success && result.init_point) {
+        // Redirecionar para o checkout do Mercado Pago
+        window.location.href = result.init_point;
       } else {
-        throw new Error(result.error || 'Erro ao criar pagamento PIX');
+        throw new Error(result.error || 'Erro ao criar preferência de pagamento');
       }
     } catch (error: any) {
       console.error('Erro ao criar PIX:', error);
@@ -232,7 +238,6 @@ const CheckoutFlow = ({ onBack, onComplete }: CheckoutFlowProps) => {
         description: error.message || "Erro ao gerar PIX. Tente novamente.",
         variant: "destructive"
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -240,18 +245,50 @@ const CheckoutFlow = ({ onBack, onComplete }: CheckoutFlowProps) => {
   const createCardPayment = async () => {
     setLoading(true);
     try {
-      await initializeMercadoPago();
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const MercadoPagoService = await initializeMercadoPago();
       
-      // Aqui você implementaria o formulário de cartão do Mercado Pago
-      // Por simplicidade, vou simular um pagamento aprovado
-      setTimeout(() => {
-        handlePaymentSuccess();
-      }, 2000);
+      const preferenceData = {
+        items: items.map(item => ({
+          id: item.id || '',
+          title: item.title || 'Verso Musical',
+          quantity: item.quantity,
+          unit_price: item.price
+        })),
+        payer: {
+          email: user?.email || 'cliente@musical.com'
+        },
+        payment_methods: {
+          excluded_payment_types: [
+            { id: 'pix' },
+            { id: 'ticket' }
+          ],
+          installments: 12
+        },
+        back_urls: {
+          success: `${window.location.origin}/checkout/success`,
+          failure: `${window.location.origin}/checkout/failure`,
+          pending: `${window.location.origin}/checkout/pending`
+        },
+        auto_return: 'approved'
+      };
+
+      const result = await MercadoPagoService.createPaymentPreference(preferenceData);
+      
+      if (result.success && result.init_point) {
+        // Redirecionar para o checkout do Mercado Pago
+        window.location.href = result.init_point;
+      } else {
+        throw new Error(result.error || 'Erro ao criar preferência de pagamento');
+      }
     } catch (error: any) {
       console.error('Erro ao processar cartão:', error);
       toast({
         title: "Erro",
-        description: "Erro ao processar pagamento. Tente novamente.",
+        description: error.message || "Erro ao processar pagamento. Tente novamente.",
         variant: "destructive"
       });
       setLoading(false);
@@ -261,7 +298,7 @@ const CheckoutFlow = ({ onBack, onComplete }: CheckoutFlowProps) => {
   const startPaymentPolling = (paymentId: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/check-payment-status/${paymentId}`);
+        const response = await fetch(`/api/mercadopago/payment-status/${paymentId}`);
         const data = await response.json();
         
         if (data.status === 'approved') {
@@ -339,7 +376,7 @@ const CheckoutFlow = ({ onBack, onComplete }: CheckoutFlowProps) => {
           <Button variant="ghost" size="sm" onClick={onBack} className="p-1">
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h2 className="text-lg font-semibold">Endereço de Entrega</h2>
+          <h2 className="text-lg font-semibold">Endereço de Cobrança</h2>
         </div>
 
         {selectedAddress && !showAddressForm && (

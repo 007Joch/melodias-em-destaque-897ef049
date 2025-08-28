@@ -33,6 +33,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
+  // Verificar se a conta está ativa (para usuários logados)
+  if (user && profile) {
+    // Verificar se a conta está bloqueada por administrador
+    if (profile.account_status === 'inactive' && profile.blocked_reason === 'admin_blocked') {
+      console.log('🚫 [ProtectedRoute] Conta bloqueada por administrador');
+      return <Navigate to="/" state={{ from: location }} replace />;
+    }
+
+    // Verificar se a conta está bloqueada temporariamente
+    if (profile.blocked_until) {
+      const blockedUntil = new Date(profile.blocked_until);
+      const now = new Date();
+      
+      if (now < blockedUntil) {
+        console.log('🚫 [ProtectedRoute] Conta bloqueada temporariamente');
+        return <Navigate to="/" state={{ from: location }} replace />;
+      }
+    }
+  }
+
   // Se especifica roles permitidas, verificar permissão
   if (allowedRoles.length > 0) {
     // Se não está logado, redirecionar

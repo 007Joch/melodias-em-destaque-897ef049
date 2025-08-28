@@ -4,5 +4,5 @@ pages_build_output_dir = "dist"
 
 # Configurações específicas para Pages
 [env.production]
-name = "musical-em-bom-portugues"
+name = "loja-rafael"
 vars = { ENVIRONMENT = "production" }

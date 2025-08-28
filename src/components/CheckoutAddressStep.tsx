@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ChevronDown, MapPin, Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, MapPin, Plus, Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,28 +74,62 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
 
   const loadAddresses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('is_default', { ascending: false });
+      // Carregar apenas o endereço do perfil do usuário
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('endereco')
+        .eq('id', user?.id)
+        .single();
 
-      if (error) throw error;
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Erro ao carregar perfil:', profileError);
+      }
+
+      let profileAddress = null;
       
-      setAddresses(data || []);
-      
-      // Selecionar endereço padrão automaticamente
-      const defaultAddress = data?.find(addr => addr.is_default);
-      if (defaultAddress) {
-        setSelectedAddressId(defaultAddress.id);
-      } else if (data && data.length > 0) {
-        setSelectedAddressId(data[0].id);
+      // Se existe endereço no perfil, usar ele
+      if (profileData?.endereco) {
+        let addr;
+        
+        // O endereço sempre vem como string JSON do banco
+        if (typeof profileData.endereco === 'string') {
+          try {
+            addr = JSON.parse(profileData.endereco);
+          } catch (e) {
+            console.error('Erro ao fazer parse do endereço:', e);
+            addr = null;
+          }
+        } else {
+          // Caso seja objeto (não deveria acontecer, mas por segurança)
+          addr = profileData.endereco;
+        }
+        
+        // Verificar se o endereço do perfil tem todos os campos necessários
+        if (addr && addr.rua && addr.numero && addr.bairro && 
+            addr.cidade && addr.estado && addr.cep) {
+          
+          profileAddress = {
+            id: 'profile-address',
+            rua: addr.rua,
+            numero: addr.numero,
+            complemento: addr.complemento || '',
+            bairro: addr.bairro,
+            cidade: addr.cidade,
+            estado: addr.estado,
+            cep: addr.cep,
+            is_default: true
+          };
+        }
       }
       
-      // Se não há endereços, mostrar formulário
-      if (!data || data.length === 0) {
+      if (profileAddress) {
+        setAddresses([profileAddress]);
+        setSelectedAddressId(profileAddress.id);
+      } else {
+        setAddresses([]);
         setShowAddForm(true);
       }
+      
     } catch (error) {
       console.error('Erro ao carregar endereços:', error);
       toast({
@@ -133,6 +167,16 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
     setCep("");
   };
 
+  const loadAddressToForm = (address: Address) => {
+    setRua(address.rua || "");
+    setNumero(address.numero || "");
+    setComplemento(address.complemento || "");
+    setBairro(address.bairro || "");
+    setCidade(address.cidade || "");
+    setEstado(address.estado || "");
+    setCep(address.cep || "");
+  };
+
   const validateForm = () => {
     return rua.trim() !== "" && numero.trim() !== "" && bairro.trim() !== "" && 
            cidade.trim() !== "" && estado.trim() !== "" && cep.trim() !== "";
@@ -150,40 +194,45 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
 
     setLoading(true);
     try {
-      const newAddress = {
-        user_id: user?.id,
+      const addressData = {
         rua,
         numero,
-        complemento: complemento || null,
+        complemento: complemento || '',
         bairro,
         cidade,
         estado,
-        cep,
-        is_default: addresses.length === 0
+        cep
       };
 
-      const { data, error } = await supabase
-        .from('addresses')
-        .insert([newAddress])
-        .select()
-        .single();
+      // Atualizar o endereço no perfil do usuário (salvar como JSON string)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ endereco: JSON.stringify(addressData) })
+        .eq('id', user?.id);
 
       if (error) throw error;
 
-      setAddresses(prev => [...prev, data]);
-      setSelectedAddressId(data.id);
+      // Criar o objeto de endereço para exibição
+      const updatedAddress = {
+        id: 'profile-address',
+        ...addressData,
+        is_default: true
+      };
+
+      setAddresses([updatedAddress]);
+      setSelectedAddressId(updatedAddress.id);
       setShowAddForm(false);
       resetForm();
       
       toast({
-        title: "Endereço salvo",
-        description: "Endereço adicionado com sucesso",
+        title: "Endereço atualizado",
+        description: "Endereço atualizado com sucesso",
       });
     } catch (error) {
-      console.error('Erro ao salvar endereço:', error);
+      console.error('Erro ao atualizar endereço:', error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar endereço",
+        description: "Erro ao atualizar endereço",
         variant: "destructive",
       });
     } finally {
@@ -191,35 +240,7 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
     }
   };
 
-  const handleDeleteAddress = async (addressId: string) => {
-    try {
-      const { error } = await supabase
-        .from('addresses')
-        .delete()
-        .eq('id', addressId);
 
-      if (error) throw error;
-
-      setAddresses(prev => prev.filter(addr => addr.id !== addressId));
-      
-      if (selectedAddressId === addressId) {
-        const remainingAddresses = addresses.filter(addr => addr.id !== addressId);
-        setSelectedAddressId(remainingAddresses.length > 0 ? remainingAddresses[0].id! : null);
-      }
-      
-      toast({
-        title: "Endereço removido",
-        description: "Endereço removido com sucesso",
-      });
-    } catch (error) {
-      console.error('Erro ao remover endereço:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao remover endereço",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleContinue = () => {
     if (!selectedAddressId) {
@@ -258,7 +279,7 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
-          <h3 className="font-semibold text-lg">Endereço de Entrega</h3>
+          <h3 className="font-semibold text-lg">Endereço de Cobrança</h3>
           <p className="text-sm text-gray-600">Selecione ou adicione um endereço</p>
         </div>
       </div>
@@ -289,7 +310,12 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
                       onChange={() => setSelectedAddressId(address.id!)}
                       className="text-primary"
                     />
-                    {address.is_default && (
+                    {address.id === 'profile-address' && (
+                      <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                        Perfil
+                      </span>
+                    )}
+                    {address.is_default && address.id !== 'profile-address' && (
                       <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full">
                         Padrão
                       </span>
@@ -304,32 +330,28 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
                   </p>
                   <p className="text-xs text-gray-600">CEP: {address.cep}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteAddress(address.id!);
-                  }}
-                  className="text-red-500 hover:text-red-700 h-6 w-6 p-0"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Botão para adicionar novo endereço */}
+      {/* Botão para atualizar endereço */}
       {!showAddForm && (
         <Button
           variant="outline"
-          onClick={() => setShowAddForm(true)}
+          onClick={() => {
+            // Carregar dados do endereço existente no formulário
+            if (addresses.length > 0) {
+              loadAddressToForm(addresses[0]);
+            }
+            setShowAddForm(true);
+          }}
           className="w-full border-dashed"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Adicionar Novo Endereço
+          Atualizar endereço
         </Button>
       )}
 
@@ -337,7 +359,7 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
       {showAddForm && (
         <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium">Novo Endereço</h4>
+            <h4 className="font-medium">Atualizar Endereço</h4>
             {addresses.length > 0 && (
               <Button
                 variant="ghost"
@@ -480,12 +502,12 @@ const CheckoutAddressStep = ({ onContinue, onBack }: CheckoutAddressStepProps) =
           </div>
 
           <Button
-            onClick={handleSaveAddress}
-            disabled={loading}
-            className="w-full"
-          >
-            {loading ? "Salvando..." : "Salvar Endereço"}
-          </Button>
+                onClick={handleSaveAddress}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading ? "Atualizando..." : "Atualizar"}
+              </Button>
         </div>
       )}
 

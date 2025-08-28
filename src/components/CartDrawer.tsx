@@ -1,8 +1,8 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
+import { Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { Separator } from "@/components/ui/separator";
@@ -31,15 +31,91 @@ interface Address {
 type CheckoutStep = 'cart' | 'address' | 'payment' | 'success';
 
 const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
-  const { items, removeFromCart, updateQuantity, clearCart, getTotalItems, getTotalPrice } = useCart();
+  const { items, removeFromCart, clearCart, getTotalItems, getTotalPrice, initialCheckoutStep, setInitialCheckoutStep } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [paymentId, setPaymentId] = useState<string>('');
+  const [finalTotalPrice, setFinalTotalPrice] = useState<number>(0);
+  const [forceUpdate, setForceUpdate] = useState(0);
   
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
+
+  // Escutar evento de carrinho limpo para forçar re-renderização
+  useEffect(() => {
+    const handleCartCleared = () => {
+      console.log('🧹 [CartDrawer] Evento cart-cleared recebido, currentStep atual:', currentStep);
+      // Só resetar se estivermos na tela de carrinho
+      if (currentStep === 'cart') {
+        console.log('🔄 [CartDrawer] Resetando estado do carrinho (na tela de carrinho)');
+        setSelectedAddress(null);
+        setPaymentId('');
+        setFinalTotalPrice(0);
+      } else {
+        console.log('⚠️ [CartDrawer] Não resetando estado - não estamos na tela de carrinho');
+      }
+    };
+
+    window.addEventListener('cart-cleared', handleCartCleared);
+    return () => window.removeEventListener('cart-cleared', handleCartCleared);
+  }, [currentStep]);
+
+  // Reset state when cart is empty (mas não durante o fluxo de sucesso)
+  useEffect(() => {
+    console.log('📊 [CartDrawer] useEffect items.length:', items.length, 'currentStep:', currentStep);
+    // Só resetar se o carrinho estiver vazio E não estivermos no fluxo de pagamento/sucesso
+    if (items.length === 0 && currentStep === 'cart') {
+      console.log('🔄 [CartDrawer] Carrinho vazio na tela de carrinho - resetando estado');
+      setSelectedAddress(null);
+      setPaymentId('');
+      setFinalTotalPrice(0);
+    } else if (items.length === 0) {
+      console.log('⚠️ [CartDrawer] Carrinho vazio mas não na tela de carrinho - mantendo estado atual');
+    }
+  }, [items.length, currentStep]);
+
+  // Log quando renderizar CheckoutSuccessStep
+  useEffect(() => {
+    if (currentStep === 'success') {
+      console.log('🎉 [CartDrawer] Renderizando CheckoutSuccessStep com:', { paymentId, finalTotalPrice, currentStep });
+    }
+  }, [currentStep, paymentId, finalTotalPrice]);
+
+  // Consumir etapa inicial desejada ao abrir o carrinho
+  useEffect(() => {
+    if (!isOpen || !initialCheckoutStep) return;
+
+    // Validar pré-requisitos ao tentar pular para address/payment
+    if (initialCheckoutStep === 'address' || initialCheckoutStep === 'payment') {
+      if (!user) {
+        toast({
+          title: "Login necessário",
+          description: "Faça login para finalizar sua compra",
+          variant: "destructive",
+        });
+        navigate("/login");
+        setInitialCheckoutStep(null);
+        onClose();
+        return;
+      }
+      if (items.length === 0) {
+        toast({
+          title: "Carrinho vazio",
+          description: "Adicione itens ao carrinho antes de finalizar",
+          variant: "destructive",
+        });
+        setCurrentStep('cart');
+        setInitialCheckoutStep(null);
+        return;
+      }
+    }
+
+    // Aplicar etapa inicial e limpar intenção
+    setCurrentStep(initialCheckoutStep);
+    setInitialCheckoutStep(null);
+  }, [isOpen, initialCheckoutStep, user, items.length, navigate, onClose, setInitialCheckoutStep]);
 
   const handleStartCheckout = () => {
     if (!user) {
@@ -71,8 +147,18 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
   };
 
   const handlePaymentSuccess = (payment_id: string) => {
+    console.log('🎯 [CartDrawer] handlePaymentSuccess chamado com paymentId:', payment_id);
+    console.log('💰 [CartDrawer] Total price atual:', totalPrice);
+    
+    setFinalTotalPrice(totalPrice); // Armazenar o valor total antes de limpar o carrinho
+    console.log('💰 [CartDrawer] Final total price definido:', totalPrice);
+    
     setPaymentId(payment_id);
+    console.log('🆔 [CartDrawer] Payment ID definido:', payment_id);
+    
+    console.log('🔄 [CartDrawer] Mudando currentStep para success...');
     setCurrentStep('success');
+    console.log('✅ [CartDrawer] CurrentStep alterado para success');
   };
 
   const handleBackToCart = () => {
@@ -96,7 +182,7 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
       case 'cart':
         return `Carrinho (${totalItems} ${totalItems === 1 ? 'item' : 'itens'})`;
       case 'address':
-        return 'Endereço de Entrega';
+        return 'Endereço de Cobrança';
       case 'payment':
         return 'Pagamento';
       case 'success':
@@ -145,38 +231,20 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                           <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
                           <p className="text-sm text-gray-600">{item.artist}</p>
                           <div className="flex justify-between items-center mt-1">
-                            <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
-                              {item.category}
-                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {item.category && item.category.split(',').map((cat, index) => (
+                                <span key={index} className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
+                                  {cat.trim()}
+                                </span>
+                              ))}
+                            </div>
                             <span className="font-medium text-primary">
-                              R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                              R$ {item.price.toFixed(2).replace('.', ',')}
                             </span>
                           </div>
                           
-                          {/* Controles de quantidade */}
-                          <div className="flex items-center justify-between mt-3">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="h-8 w-8 p-0 rounded-full"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="text-sm font-medium min-w-[2rem] text-center">
-                                {item.quantity}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="h-8 w-8 p-0 rounded-full"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            
+                          {/* Botão de remoção */}
+                          <div className="flex justify-end mt-3">
                             <Button
                               size="sm"
                               variant="ghost"
@@ -210,7 +278,13 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                   <div className="space-y-3 flex-shrink-0 pb-4">
                     <Button
                       variant="outline"
-                      onClick={clearCart}
+                      onClick={() => {
+                        clearCart();
+                        toast({
+                          title: "Carrinho limpo",
+                          description: "Todos os itens foram removidos do carrinho",
+                        });
+                      }}
                       className="w-full rounded-full py-3 text-sm font-medium"
                     >
                       Limpar Carrinho
@@ -248,13 +322,14 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
           )}
 
           {currentStep === 'success' && (
-            <div className="flex-1 overflow-y-auto">
-              <CheckoutSuccessStep
-                paymentId={paymentId}
-                onClose={handleClose}
-              />
-            </div>
-          )}
+          <div className="flex-1 overflow-y-auto">
+            <CheckoutSuccessStep
+              paymentId={paymentId}
+              totalAmount={finalTotalPrice}
+              onClose={handleClose}
+            />
+          </div>
+        )}
         </div>
       </SheetContent>
     </Sheet>

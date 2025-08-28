@@ -1,10 +1,14 @@
 
+import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Music, Plus, Eye } from "lucide-react";
+import { Music, Plus } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { Link } from "react-router-dom";
-import { generateSlug } from "@/services/versesService";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { hasUserPurchasedVerse } from "@/services/purchaseService";
+import { useState, useEffect } from "react";
+import { DEFAULT_VERSE_IMAGE } from '@/constants/images';
 
 interface MusicCardProps {
   id?: number | string;
@@ -12,23 +16,86 @@ interface MusicCardProps {
   artist: string;
   image?: string;
   category: string;
-  views?: number;
   price?: number;
   classificacoes?: string[] | null;
 }
 
-const MusicCard = ({ id, title, artist, image, category, views, price, classificacoes }: MusicCardProps) => {
-  const { addToCart } = useCart();
+const MusicCard = ({ id, title, artist, image, category, price, classificacoes }: MusicCardProps) => {
+  const { addToCart, items } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [isPurchased, setIsPurchased] = useState(false);
+  const [checkingPurchase, setCheckingPurchase] = useState(true);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const verseId = id ? String(id) : `${title}-${artist}`.toLowerCase().replace(/\s+/g, '-');
+  
+  // Verificar se o item está no carrinho
+  const isInCart = items.some(item => item.id === verseId);
+
+  // Escutar eventos de carrinho limpo para forçar re-renderização
+  useEffect(() => {
+    const handleCartCleared = () => {
+      console.log('🔄 [MusicCard] Carrinho limpo detectado, forçando re-renderização');
+      setForceUpdate(prev => prev + 1);
+    };
+
+    window.addEventListener('cart-cleared', handleCartCleared);
+    return () => window.removeEventListener('cart-cleared', handleCartCleared);
+  }, []);
+  
+  useEffect(() => {
+    const checkIfPurchased = async () => {
+      // Se usuário não está logado, não precisa verificar compra
+      if (!user) {
+        setIsPurchased(false);
+        setCheckingPurchase(false);
+        return;
+      }
+      
+      // Se não tem ID válido, não precisa verificar
+      if (!id || typeof id !== 'number') {
+        setIsPurchased(false);
+        setCheckingPurchase(false);
+        return;
+      }
+      
+      try {
+        setCheckingPurchase(true);
+        const purchased = await hasUserPurchasedVerse(user.id, id);
+        setIsPurchased(purchased);
+      } catch (error) {
+        console.error('Erro ao verificar compra do verso:', id, error);
+        setIsPurchased(false);
+      } finally {
+        setCheckingPurchase(false);
+      }
+    };
+    
+    checkIfPurchased();
+  }, [user, id]);
 
   const handleAddToCart = () => {
+    // Validar se o título é válido (sem fallbacks)
+    const validTitle = (title || '').trim();
+    if (!validTitle) {
+      console.error('Item sem título válido, não pode ser adicionado ao carrinho');
+      return;
+    }
+    
+    // Verificar se já está no carrinho
+    if (isInCart) {
+      console.log('Item já está no carrinho, ignorando:', verseId);
+      return;
+    }
+    
+    console.log('Adicionando ao carrinho via MusicCard:', { verseId, title, artist });
     addToCart({
       id: verseId,
-      title,
-      artist,
-      category,
-      image,
-      price: price || 0
+      title: validTitle,
+      artist: artist || '',
+      category: classificacoes && classificacoes.length > 0 ? classificacoes.join(', ') : category,
+      image: getValidImage(image),
+      price
     });
   };
 
@@ -41,31 +108,31 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
   };
 
   // Verificar se a imagem é válida
-  const getValidImage = () => {
-    console.log('🖼️ Verificando imagem para o verso:', { id, title, image });
+  const getValidImage = (img?: string | null) => {
+    console.log('🖼️ Verificando imagem para o verso:', { id, title, image: img });
     
-    if (!image || image.trim() === '' || image === 'null') {
+    if (!img || img.trim() === '' || img === 'null') {
       console.log('❌ Imagem inválida ou vazia, usando genérica');
-      return '/musical-generic.svg';
+      return DEFAULT_VERSE_IMAGE;
     }
     
     // Se a imagem contém o path do bucket capas ou é do Supabase, usar ela
-    if (image.includes('/capas/') || image.includes('supabase.co') || image.includes('hlrcvvaneofcpncbqjyg')) {
-      console.log('✅ Imagem válida do Supabase:', image);
-      return image;
+    if (img.includes('/capas/') || img.includes('supabase.co') || img.includes('hlrcvvaneofcpncbqjyg')) {
+      console.log('✅ Imagem válida do Supabase:', img);
+      return img;
     }
     
     // Se for uma URL externa válida, usar ela
-    if (image.startsWith('http')) {
-      console.log('✅ URL externa válida:', image);
-      return image;
+    if (img.startsWith('http')) {
+      console.log('✅ URL externa válida:', img);
+      return img;
     }
     
-    console.log('⚠️ Imagem não reconhecida, usando genérica:', image);
-    return '/musical-generic.svg';
+    console.log('⚠️ Imagem não reconhecida, usando genérica:', img);
+    return DEFAULT_VERSE_IMAGE;
   };
 
-  const validImage = getValidImage();
+  const validImage = getValidImage(image);
   
   return (
     <Card className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white">
@@ -82,7 +149,7 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
                 console.log('❌ Erro ao carregar imagem, usando fallback');
                 const target = e.target as HTMLImageElement;
                 target.onerror = null;
-                target.src = '/musical-generic.svg';
+                target.src = DEFAULT_VERSE_IMAGE;
               }}
               onLoad={() => {
                 console.log('✅ Imagem carregada com sucesso:', validImage);
@@ -102,9 +169,9 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
         {/* Conteúdo principal */}
         <div className="flex-1 min-w-0">
           {/* Título e Musical */}
-          <Link to={`/${generateSlug(title || '')}`} className="block">
+          <Link to={`/preview/${id}`} className="block">
             <h3 className="font-bold text-gray-900 text-base sm:text-lg hover:text-primary transition-colors mb-1">
-              {title || 'Título não informado'}
+              {title}
             </h3>
           </Link>
           <p className="text-sm text-gray-600 mb-2 line-clamp-1">
@@ -125,14 +192,50 @@ const MusicCard = ({ id, title, artist, image, category, views, price, classific
             </div>
           )}
           
-          {/* Botão ocupando toda a largura */}
-          <Button 
-            onClick={handleAddToCart}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-full py-2 text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar
-          </Button>
+          {/* Botões condicionais baseados no status de compra */}
+          {checkingPurchase ? (
+            <Button 
+              disabled
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-full py-2 text-sm font-medium transition-colors opacity-50"
+            >
+              Verificando...
+            </Button>
+          ) : isPurchased ? (
+            <Button 
+              onClick={() => navigate(`/preview/${id}`)}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full py-2 sm:py-1.5 text-xs sm:text-xs font-medium transition-colors border border-gray-200"
+            >
+              Ver detalhes
+            </Button>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button 
+                onClick={() => navigate(`/preview/${id}`)}
+                className="w-full sm:flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full py-2 sm:py-1.5 text-xs sm:text-xs font-medium transition-colors border border-gray-200"
+              >
+                Detalhes
+              </Button>
+              <Button 
+                onClick={handleAddToCart}
+                disabled={isInCart}
+                className={`w-full sm:flex-1 rounded-full py-2 sm:py-1.5 text-xs sm:text-xs font-medium transition-colors ${
+                  isInCart 
+                    ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-200' 
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                }`}
+                key={`add-cart-${verseId}-${forceUpdate}-${isInCart}`}
+              >
+                {isInCart ? (
+                  <>✓ No carrinho</>
+                ) : (
+                  <>
+                    <Plus className="w-3 h-3 mr-1" />
+                    Adicionar
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </Card>

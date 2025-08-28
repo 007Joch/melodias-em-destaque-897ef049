@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Eye, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Music, Calendar, User, FileText, Type, Upload, Image, Video, Loader2, Search, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,10 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Link, useNavigate } from 'react-router-dom';
-import { CartProvider } from '@/hooks/useCart';
+
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { createVerse, VerseFormData } from '../services/versesService';
+import { createVerse, VerseFormData, searchSisterVerses, Verse, VerseSearchResult } from '../services/versesService';
 import { toast } from '@/components/ui/sonner';
 import PriceInput from '@/components/PriceInput';
 
@@ -27,12 +27,18 @@ const CreateVerse = () => {
     titulo_pt_br: '',
     titulo_original: '',
     musical: '',
-    estilo: '',
+    estilo: [],
+    natureza: [],
+    dificuldade: [],
+    classificacao_vocal_alt: [],
     conteudo: '',
     audioOriginal: '',
     imageUrl: '',
     imageFile: undefined,
-    valor: 0
+    valor: 0,
+    versoes_irmas: [],
+    ano_gravacao: undefined,
+    elenco: ''
   });
 
   const [isPreview, setIsPreview] = useState(false);
@@ -40,6 +46,27 @@ const CreateVerse = () => {
   const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
   const [isLoading, setIsLoading] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
+  
+  // Estados para versões irmãs
+  const [showSisterVersesField, setShowSisterVersesField] = useState(false);
+  const [sisterVersesSearch, setSisterVersesSearch] = useState('');
+  const [sisterVersesResults, setSisterVersesResults] = useState<VerseSearchResult[]>([]);
+  // Tipo específico para versões irmãs selecionadas
+  type SelectedSisterVerse = {
+    id: number;
+    titulo_original: string;
+    titulo_pt_br: string;
+    musical: string;
+  };
+  
+  const [selectedSisterVerses, setSelectedSisterVerses] = useState<SelectedSisterVerse[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Estados para campos dinâmicos
+  const [estiloInput, setEstiloInput] = useState('');
+  const [naturezaInput, setNaturezaInput] = useState('');
+  const [dificuldadeInput, setDificuldadeInput] = useState('');
+  const [classificacaoVocalInput, setClassificacaoVocalInput] = useState('');
   
 
 
@@ -73,6 +100,133 @@ const CreateVerse = () => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  // Funções para gerenciar campos dinâmicos
+  const addEstilo = () => {
+    if (estiloInput.trim() && formData.estilo.length < 10 && !formData.estilo.includes(estiloInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        estilo: [...prev.estilo, estiloInput.trim()]
+      }));
+      setEstiloInput('');
+    }
+  };
+
+  const removeEstilo = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      estilo: prev.estilo.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addNatureza = () => {
+    if (naturezaInput.trim() && formData.natureza.length < 10 && !formData.natureza.includes(naturezaInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        natureza: [...prev.natureza, naturezaInput.trim()]
+      }));
+      setNaturezaInput('');
+    }
+  };
+
+  const removeNatureza = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      natureza: prev.natureza.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addDificuldade = () => {
+    const num = parseInt(dificuldadeInput);
+    if (!isNaN(num) && num >= 1 && num <= 5 && formData.dificuldade.length < 10 && !formData.dificuldade.includes(num)) {
+      setFormData(prev => ({
+        ...prev,
+        dificuldade: [...prev.dificuldade, num]
+      }));
+      setDificuldadeInput('');
+    }
+  };
+
+  const removeDificuldade = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      dificuldade: prev.dificuldade.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addClassificacaoVocal = () => {
+    if (classificacaoVocalInput.trim() && formData.classificacao_vocal_alt.length < 10 && !formData.classificacao_vocal_alt.includes(classificacaoVocalInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        classificacao_vocal_alt: [...prev.classificacao_vocal_alt, classificacaoVocalInput.trim()]
+      }));
+      setClassificacaoVocalInput('');
+    }
+  };
+
+  const removeClassificacaoVocal = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      classificacao_vocal_alt: prev.classificacao_vocal_alt.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Funções para versões irmãs
+  const handleSisterVersesSearch = async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setSisterVersesResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchSisterVerses(searchTerm);
+      setSisterVersesResults(results);
+    } catch (error) {
+      console.error('Erro ao buscar versões irmãs:', error);
+      toast.error('Erro ao buscar versões irmãs');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const addSisterVerse = (verse: VerseSearchResult) => {
+    if (selectedSisterVerses.length >= 10) {
+      toast.error('Máximo de 10 versões irmãs permitidas');
+      return;
+    }
+
+    if (selectedSisterVerses.find(v => v.id === verse.id)) {
+      toast.error('Esta versão já foi adicionada');
+      return;
+    }
+
+    // Criar um objeto Verse mínimo com os dados disponíveis
+    const verseToAdd = {
+      id: verse.id,
+      titulo_original: verse.titulo_original,
+      titulo_pt_br: verse.titulo_pt_br,
+      musical: verse.musical
+    };
+
+    const newSelectedVerses = [...selectedSisterVerses, verseToAdd];
+    setSelectedSisterVerses(newSelectedVerses);
+    setFormData(prev => ({
+      ...prev,
+      versoes_irmas: newSelectedVerses.map(v => v.id)
+    }));
+    setSisterVersesSearch('');
+    setSisterVersesResults([]);
+  };
+
+  const removeSisterVerse = (verseId: number) => {
+    const newSelectedVerses = selectedSisterVerses.filter(v => v.id !== verseId);
+    setSelectedSisterVerses(newSelectedVerses);
+    setFormData(prev => ({
+      ...prev,
+      versoes_irmas: newSelectedVerses.map(v => v.id)
     }));
   };
 
@@ -132,8 +286,19 @@ const CreateVerse = () => {
     setLastSubmitTime(now);
     
     // Validação básica
-    if (!formData.titulo_pt_br || !formData.musical || !formData.estilo || !formData.compositor || !formData.versionadoEm) {
+    if (!formData.titulo_pt_br || !formData.musical || formData.estilo.length === 0 || !formData.compositor || !formData.versionadoEm) {
       toast.error('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+    
+    // Validação adicional para natureza e dificuldade
+    if (formData.natureza.length === 0) {
+      toast.error('Por favor, adicione pelo menos uma natureza.');
+      return;
+    }
+    
+    if (formData.dificuldade.length === 0) {
+      toast.error('Por favor, adicione pelo menos um nível de dificuldade.');
       return;
     }
     
@@ -156,14 +321,25 @@ const CreateVerse = () => {
           titulo_pt_br: '',
           titulo_original: '',
           musical: '',
-          estilo: '',
+          estilo: [],
+          natureza: [],
+          dificuldade: [],
+          classificacao_vocal_alt: [],
           conteudo: '',
           audioOriginal: '',
           imageUrl: '',
           imageFile: undefined,
-          valor: 0
+          valor: 0,
+          versoes_irmas: []
         });
         setImagePreview('');
+        setSelectedSisterVerses([]);
+        setShowSisterVersesField(false);
+        setSisterVersesSearch('');
+        setSisterVersesResults([]);
+        setEstiloInput('');
+        setNaturezaInput('');
+        setDificuldadeInput('');
         // Navegar para a homepage para ver o novo verso
         setTimeout(() => {
           navigate('/');
@@ -200,8 +376,7 @@ const CreateVerse = () => {
   };
 
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
         <Header />
         
         <main className="container mx-auto px-4 sm:px-6 py-8">
@@ -215,8 +390,8 @@ const CreateVerse = () => {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Novo Verso</h1>
-                <p className="text-gray-600">Cadastre um novo verso musical</p>
+                <h1 className="text-3xl font-bold text-gray-900">Nova Versão</h1>
+                <p className="text-gray-600">Cadastre uma nova versão musical</p>
               </div>
             </div>
           </div>
@@ -310,6 +485,35 @@ const CreateVerse = () => {
                     required
                   />
                 </div>
+                
+                <div>
+                  <Label htmlFor="ano_gravacao" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Ano da Gravação
+                  </Label>
+                  <Input
+                    id="ano_gravacao"
+                    type="number"
+                    min="1900"
+                    max="2030"
+                    value={formData.ano_gravacao || ''}
+                    onChange={(e) => handleInputChange('ano_gravacao', e.target.value ? parseInt(e.target.value) : undefined)}
+                    placeholder="Ex: 2013"
+                    className="rounded-lg border-gray-300 focus:border-primary"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="elenco" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Elenco
+                  </Label>
+                  <Input
+                    id="elenco"
+                    value={formData.elenco || ''}
+                    onChange={(e) => handleInputChange('elenco', e.target.value)}
+                    placeholder="Ex: do elenco original da Broadway"
+                    className="rounded-lg border-gray-300 focus:border-primary"
+                  />
+                </div>
               </div>
             </Card>
 
@@ -329,7 +533,7 @@ const CreateVerse = () => {
                     id="titulo_pt_br"
                     value={formData.titulo_pt_br}
                     onChange={(e) => handleInputChange('titulo_pt_br', e.target.value)}
-                    placeholder="Título traduzido do verso"
+                    placeholder="Título traduzido da versão"
                     className="rounded-lg border-gray-300 focus:border-primary"
                     required
                   />
@@ -343,7 +547,7 @@ const CreateVerse = () => {
                     id="titulo_original"
                     value={formData.titulo_original}
                     onChange={(e) => handleInputChange('titulo_original', e.target.value)}
-                    placeholder="Título original do verso"
+                    placeholder="Título original da versão"
                     className="rounded-lg border-gray-300 focus:border-primary"
                   />
                 </div>
@@ -362,22 +566,179 @@ const CreateVerse = () => {
                   />
                 </div>
                 
+                {/* Campo Estilo Dinâmico */}
                 <div>
-                  <Label htmlFor="estilo" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Estilo *
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Estilo * (máximo 10)
                   </Label>
-                  <select
-                    id="estilo"
-                    value={formData.estilo}
-                    onChange={(e) => handleInputChange('estilo', e.target.value)}
-                    className="w-full rounded-lg border-gray-300 focus:border-primary px-3 py-2"
-                    required
-                  >
-                    <option value="">Selecione um estilo</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      value={estiloInput}
+                      onChange={(e) => setEstiloInput(e.target.value)}
+                      placeholder="Digite um estilo"
+                      className="flex-1 rounded-lg border-gray-300 focus:border-primary"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addEstilo())}
+                    />
+                    <Button
+                      type="button"
+                      onClick={addEstilo}
+                      disabled={!estiloInput.trim() || formData.estilo.length >= 10}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {formData.estilo.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.estilo.map((item, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm"
+                        >
+                          {item}
+                          <button
+                            type="button"
+                            onClick={() => removeEstilo(index)}
+                            className="text-primary hover:text-primary/70"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Campo Natureza Dinâmico */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Natureza * (máximo 10)
+                  </Label>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      value={naturezaInput}
+                      onChange={(e) => setNaturezaInput(e.target.value)}
+                      placeholder="Digite uma natureza"
+                      className="flex-1 rounded-lg border-gray-300 focus:border-primary"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addNatureza())}
+                    />
+                    <Button
+                      type="button"
+                      onClick={addNatureza}
+                      disabled={!naturezaInput.trim() || formData.natureza.length >= 10}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {formData.natureza.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.natureza.map((item, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-md text-sm"
+                        >
+                          {item}
+                          <button
+                            type="button"
+                            onClick={() => removeNatureza(index)}
+                            className="text-green-800 hover:text-green-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Campo Dificuldade Dinâmico */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Dificuldade * (1-5, máximo 10 níveis)
+                  </Label>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={dificuldadeInput}
+                      onChange={(e) => setDificuldadeInput(e.target.value)}
+                      placeholder="Digite um nível (1-5)"
+                      className="flex-1 rounded-lg border-gray-300 focus:border-primary"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addDificuldade())}
+                    />
+                    <Button
+                      type="button"
+                      onClick={addDificuldade}
+                      disabled={!dificuldadeInput || formData.dificuldade.length >= 10}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {formData.dificuldade.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.dificuldade.map((item, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-md text-sm"
+                        >
+                          {item} de 5
+                          <button
+                            type="button"
+                            onClick={() => removeDificuldade(index)}
+                            className="text-orange-800 hover:text-orange-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Campo Classificação Vocal Dinâmico */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Classificação Vocal (máximo 10)
+                  </Label>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      value={classificacaoVocalInput}
+                      onChange={(e) => setClassificacaoVocalInput(e.target.value)}
+                      placeholder="Digite uma classificação vocal"
+                      className="flex-1 rounded-lg border-gray-300 focus:border-primary"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addClassificacaoVocal())}
+                    />
+                    <Button
+                      type="button"
+                      onClick={addClassificacaoVocal}
+                      disabled={!classificacaoVocalInput.trim() || formData.classificacao_vocal_alt.length >= 10}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {formData.classificacao_vocal_alt.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.classificacao_vocal_alt.map((item, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-md text-sm"
+                        >
+                          {item}
+                          <button
+                            type="button"
+                            onClick={() => removeClassificacaoVocal(index)}
+                            className="text-purple-800 hover:text-purple-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -397,11 +758,113 @@ const CreateVerse = () => {
                   />
                 </div>
                 
+                {/* Campo de Versões Irmãs */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-sm font-medium text-gray-700">
+                      Versões Irmãs (Opcional)
+                    </Label>
+                    {!showSisterVersesField && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSisterVersesField(true)}
+                        className="flex items-center space-x-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Adicionar Versões Irmãs</span>
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {showSisterVersesField && (
+                    <div className="space-y-4">
+                      {/* Campo de busca */}
+                      <div className="relative">
+                        <div className="flex space-x-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <Input
+                              placeholder="Buscar por título original..."
+                              value={sisterVersesSearch}
+                              onChange={(e) => {
+                                setSisterVersesSearch(e.target.value);
+                                handleSisterVersesSearch(e.target.value);
+                              }}
+                              className="pl-10 rounded-lg border-gray-300 focus:border-primary"
+                            />
+                            {isSearching && (
+                              <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setShowSisterVersesField(false);
+                              setSisterVersesSearch('');
+                              setSisterVersesResults([]);
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* Resultados da busca */}
+                        {sisterVersesResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {sisterVersesResults.map((verse) => (
+                              <div
+                                key={verse.id}
+                                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                onClick={() => addSisterVerse(verse)}
+                              >
+                                <div className="font-medium text-gray-900">{verse.titulo_original}</div>
+                                <div className="text-sm text-gray-600">{verse.musical}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Versões selecionadas */}
+                      {selectedSisterVerses.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-700">
+                            Versões Irmãs Selecionadas ({selectedSisterVerses.length}/10):
+                          </div>
+                          <div className="space-y-2">
+                            {selectedSisterVerses.map((verse) => (
+                              <div
+                                key={verse.id}
+                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                              >
+                                <div>
+                                  <div className="font-medium text-gray-900">{verse.titulo_original}</div>
+                                  <div className="text-sm text-gray-600">{verse.musical}</div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeSisterVerse(verse.id)}
+                                  className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                
                 <div className="md:col-span-2">
                   <Label className="text-sm font-medium text-gray-700 mb-3 block">
-                    Thumbnail do Verso
+                    Thumbnail da Versão
                   </Label>
                   
                   {/* Seletor de método */}
@@ -568,7 +1031,7 @@ const CreateVerse = () => {
             <Card className="p-6 border-0 shadow-sm">
               <div className="flex items-center space-x-2 mb-6">
                 <Type className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-semibold text-gray-900">Conteúdo do Verso</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Conteúdo da Versão</h2>
                 <div className="text-sm text-gray-500 ml-auto">
                   Editor visual com formatação completa
                 </div>
@@ -578,7 +1041,7 @@ const CreateVerse = () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-medium text-blue-900 mb-2">💡 Dica de Uso</h3>
                   <p className="text-sm text-blue-800">
-                    Use este editor para formatar todo o conteúdo do verso. Você pode:
+                    Use este editor para formatar todo o conteúdo da versão. Você pode:
                   </p>
                   <ul className="text-sm text-blue-800 mt-2 ml-4 list-disc">
                     <li>Destacar nomes de personagens em <strong>negrito</strong></li>
@@ -595,7 +1058,7 @@ const CreateVerse = () => {
                     onChange={(value) => handleInputChange('conteudo', value)}
                     modules={quillModules}
                     formats={quillFormats}
-                    placeholder="Digite ou cole o conteúdo do verso aqui. Use as ferramentas de formatação para destacar personagens, indicações cênicas, etc."
+                    placeholder="Digite ou cole o conteúdo da versão aqui. Use as ferramentas de formatação para destacar personagens, indicações cênicas, etc."
                     style={{ minHeight: '300px' }}
                   />
                 </div>
@@ -604,15 +1067,7 @@ const CreateVerse = () => {
             
             {/* Botões de Ação */}
             <div className="flex justify-end space-x-4 pt-6">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handlePreview}
-                className="rounded-full"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Visualizar
-              </Button>
+
               <Button 
                 type="submit"
                 className="bg-primary hover:bg-primary/90 rounded-full"
@@ -626,7 +1081,7 @@ const CreateVerse = () => {
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Salvar Verso
+                    Salvar Versão
                   </>
                 )}
               </Button>
@@ -636,7 +1091,6 @@ const CreateVerse = () => {
 
         <Footer />
       </div>
-    </CartProvider>
   );
 };
 

@@ -11,13 +11,8 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MercadoPagoService, { type InstallmentOption } from '@/services/mercadoPagoService';
 
-// Declarações de tipos para MercadoPago
-declare global {
-  interface Window {
-    MercadoPago: any;
-  }
-}
 
 interface Address {
   id?: string;
@@ -48,16 +43,36 @@ const CheckoutPayment = () => {
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
   const [installments, setInstallments] = useState(1);
+  // Estados de parcelas via API (BIN)
+  const [loadingInstallments, setLoadingInstallments] = useState(false);
+  const [installmentOptions, setInstallmentOptions] = useState<InstallmentOption[]>([]);
+  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
   
   // PIX states
   const [pixData, setPixData] = useState<PixPaymentData | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
   const [pixPaymentId, setPixPaymentId] = useState<string | null>(null);
   
+  // Estados de cupom
+  const [couponCode, setCouponCode] = useState<string>("");
+  const [couponLoading, setCouponLoading] = useState<boolean>(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<null | {
+    code: string;
+    discount_percent: number;
+    expires_at: string | null;
+    usage_limit: number | null;
+    usage_count: number | null;
+  }>(null);
+  
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items, getTotalPrice, clearCart } = useCart();
   const totalAmount = getTotalPrice();
+  
+  // Cálculo de desconto/total final
+  const discountPercent = appliedCoupon?.discount_percent ?? 0;
+  const discountAmount = discountPercent > 0 ? (totalAmount * discountPercent) / 100 : 0;
+  const finalTotal = Math.max(0, totalAmount - discountAmount);
 
   useEffect(() => {
     if (!user) {
@@ -98,8 +113,9 @@ const CheckoutPayment = () => {
     
     const script = document.createElement('script');
     script.src = 'https://sdk.mercadopago.com/js/v2';
+    script.async = true;
     script.onload = () => {
-      window.MercadoPago = new window.MercadoPago('TEST-d72e3d17-e94f-4af6-a1e0-20b5be84c593');
+      // SDK do Mercado Pago carregado
     };
     document.head.appendChild(script);
   };
@@ -131,8 +147,8 @@ const CheckoutPayment = () => {
     setLoading(true);
     try {
       const paymentData = {
-        transaction_amount: totalAmount,
-        description: `Compra Musical em Bom Português - ${items.length} item(s)`,
+        transaction_amount: finalTotal,
+        description: `Compra Musical em Bom Português - ${items.length} item(s)` ,
         payment_method_id: 'pix',
         payer: {
           email: user?.email,
@@ -145,7 +161,14 @@ const CheckoutPayment = () => {
             title: item.title,
             quantity: item.quantity,
             price: item.price
-          }))
+          })),
+          ...(appliedCoupon ? { coupon: {
+            code: appliedCoupon.code,
+            discount_percent: appliedCoupon.discount_percent,
+            discount_amount: discountAmount,
+            original_total: totalAmount,
+            final_total: finalTotal
+          }} : {})
         }
       };
 
@@ -227,7 +250,7 @@ const CheckoutPayment = () => {
       const [month, year] = expiryDate.split('/');
       
       const paymentData = {
-        transaction_amount: totalAmount,
+        transaction_amount: finalTotal,
         description: `Compra Musical em Bom Português - ${items.length} item(s)`,
         payment_method_id: paymentMethod === 'credit' ? 'visa' : 'debvisa', // Simplificado
         installments: installments,
@@ -235,6 +258,13 @@ const CheckoutPayment = () => {
           email: user?.email,
           first_name: user?.user_metadata?.name || 'Cliente',
         },
+        ...(appliedCoupon ? { coupon: {
+          code: appliedCoupon.code,
+          discount_percent: appliedCoupon.discount_percent,
+          discount_amount: discountAmount,
+          original_total: totalAmount,
+          final_total: finalTotal
+        } } : {}),
         card: {
           number: cardNumber.replace(/\s/g, ''),
           security_code: cvv,
@@ -271,12 +301,23 @@ const CheckoutPayment = () => {
       
       if (data.status === 'approved') {
         handlePaymentSuccess(data.id);
-      } else {
+      } else if (data.status === 'rejected' || data.status === 'cancelled') {
         toast({
-          title: "Pagamento não aprovado",
+          title: "Pagamento rejeitado",
           description: data.status_detail || "Verifique os dados do cartão e tente novamente",
           variant: "destructive",
         });
+      } else {
+        // Para pagamentos em processamento (pending, in_process, etc.), iniciar polling
+        console.log('⏳ Pagamento com cartão em processamento, iniciando polling...');
+        toast({
+          title: "Pagamento em processamento",
+          description: "O pagamento está sendo processado. Aguarde a confirmação.",
+          variant: "default",
+        });
+        
+        // Iniciar polling de status para pagamentos em processamento
+        startPaymentStatusPolling(data.id);
       }
       
     } catch (error) {
@@ -297,7 +338,11 @@ const CheckoutPayment = () => {
       const orderData = {
         user_id: user?.id,
         payment_id: paymentId,
-        total_amount: totalAmount,
+        total_amount: finalTotal,
+        original_total: totalAmount,
+        discount_percent: appliedCoupon?.discount_percent ?? 0,
+        discount_amount: discountAmount,
+        coupon_code: appliedCoupon?.code ?? null,
         status: 'paid',
         address: address,
         items: items,
@@ -309,6 +354,36 @@ const CheckoutPayment = () => {
         .insert([orderData]);
 
       if (error) throw error;
+
+      // Atualizar uso do cupom (se houver)
+      if (appliedCoupon?.code) {
+        try {
+          const { data: couponRow, error: fetchCouponError } = await supabase
+            .from('coupons')
+            .select('id, usage_count, usage_limit')
+            .eq('code', appliedCoupon.code)
+            .maybeSingle();
+
+          if (fetchCouponError) {
+            console.error('Erro ao buscar cupom para incremento:', fetchCouponError);
+          } else if (couponRow) {
+            const currentCount = couponRow.usage_count ?? 0;
+            const nextCount = currentCount + 1;
+            // Se houver limite, não ultrapassar
+            if (couponRow.usage_limit === null || nextCount <= couponRow.usage_limit) {
+              const { error: incError } = await supabase
+                .from('coupons')
+                .update({ usage_count: nextCount, updated_at: new Date().toISOString() })
+                .eq('id', couponRow.id);
+              if (incError) {
+                console.error('Erro ao incrementar uso do cupom:', incError);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Erro inesperado ao incrementar uso do cupom:', e);
+        }
+      }
 
       // Limpar carrinho e localStorage
       clearCart();
@@ -341,6 +416,63 @@ const CheckoutPayment = () => {
       });
       setTimeout(() => setPixCopied(false), 3000);
     }
+  };
+
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) {
+      toast({ title: 'Código obrigatório', description: 'Informe um código de cupom.', variant: 'destructive' });
+      return;
+    }
+    setCouponLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('code, discount_percent, expires_at, enabled, usage_limit, usage_count')
+        .ilike('code', code)
+        .maybeSingle();
+
+      if (error || !data) {
+        throw new Error('Cupom não encontrado.');
+      }
+      if (!data.enabled) {
+        throw new Error('Este cupom está desativado.');
+      }
+      if (data.expires_at) {
+        const tz = 'America/Sao_Paulo';
+        const toDateKey = (d: Date) =>
+          new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+        const expiresKey = toDateKey(new Date(data.expires_at));
+        const todayKey = toDateKey(new Date());
+        if (expiresKey < todayKey) {
+          throw new Error('Este cupom está expirado.');
+        }
+      }
+      if (data.usage_limit !== null && data.usage_count !== null && data.usage_count >= data.usage_limit) {
+        throw new Error('Limite de uso do cupom atingido.');
+      }
+
+      setAppliedCoupon({
+        code: data.code,
+        discount_percent: data.discount_percent,
+        expires_at: data.expires_at,
+        usage_limit: data.usage_limit,
+        usage_count: data.usage_count,
+      });
+      toast({ title: 'Cupom aplicado', description: `${data.code} (-${data.discount_percent}%)` });
+    } catch (err) {
+      console.error('Erro ao aplicar cupom:', err);
+      const message = err instanceof Error ? err.message : 'Não foi possível aplicar o cupom';
+      toast({ title: 'Cupom inválido', description: message, variant: 'destructive' });
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    toast({ title: 'Cupom removido', description: 'O desconto foi removido.' });
   };
 
   if (!address) {
@@ -453,22 +585,25 @@ const CheckoutPayment = () => {
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="installments">Parcelas</Label>
-                        <select
-                          id="installments"
-                          value={installments}
-                          onChange={(e) => setInstallments(parseInt(e.target.value))}
-                          className="w-full p-3 border border-gray-200 rounded-full focus:border-primary focus:ring-primary/20"
-                        >
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
-                            <option key={num} value={num}>
-                              {num}x de R$ {(totalAmount / num).toFixed(2).replace('.', ',')} 
-                              {num === 1 ? ' à vista' : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      {/* Parcelas - oculto até começar a digitar o cartão */}
+                      {cardNumber.replace(/\D/g, '').length > 0 && (
+                        <div className="space-y-2">
+                          <Label htmlFor="installments">Parcelas</Label>
+                          <select
+                            id="installments"
+                            value={installments}
+                            onChange={(e) => setInstallments(parseInt(e.target.value))}
+                            className="w-full p-3 border border-gray-200 rounded-full focus:border-primary focus:ring-primary/20"
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
+                              <option key={num} value={num}>
+                                {num}x de R$ {(finalTotal / num).toFixed(2).replace('.', ',')} 
+                                {num === 1 ? ' à vista' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
                   
@@ -612,10 +747,10 @@ const CheckoutPayment = () => {
 
           {/* Resumo do pedido */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Endereço de entrega */}
+            {/* Endereço de cobrança */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Endereço de Entrega</CardTitle>
+                <CardTitle className="text-lg">Endereço de Cobrança</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-sm space-y-1">
@@ -653,13 +788,69 @@ const CheckoutPayment = () => {
                 </div>
                 
                 <Separator />
-                
-                <div className="flex justify-between items-center font-bold text-lg">
-                  <span>Total</span>
-                  <span className="text-primary">
-                    R$ {totalAmount.toFixed(2).replace('.', ',')}
-                  </span>
+
+                {/* Cupom de desconto */}
+                <div className="space-y-2">
+                  <Label htmlFor="coupon">Cupom de desconto</Label>
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="text-sm">
+                        <span className="font-semibold">{appliedCoupon.code}</span>
+                        <span className="text-green-700"> (-{appliedCoupon.discount_percent}%)</span>
+                      </div>
+                      <Button variant="outline" size="sm" className="rounded-full" onClick={handleRemoveCoupon}>
+                        Remover
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        id="coupon"
+                        placeholder="EX: DESCONTO10"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="rounded-full"
+                      />
+                      <Button onClick={handleApplyCoupon} disabled={couponLoading || !couponCode} className="rounded-full px-6">
+                        {couponLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Aplicando...
+                          </>
+                        ) : (
+                          'Aplicar'
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
+                
+                <Separator />
+                
+                {/* Totais */}
+                {appliedCoupon ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-gray-700">
+                      <span>Subtotal</span>
+                      <span>R$ {totalAmount.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-green-700">
+                      <span>Desconto ({appliedCoupon.discount_percent}%)</span>
+                      <span>- R$ {discountAmount.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold text-lg">
+                      <span>Total a pagar</span>
+                      <span className="text-primary">R$ {finalTotal.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center font-bold text-lg">
+                    <span>Total</span>
+                    <span className="text-primary">
+                      R$ {totalAmount.toFixed(2).replace('.', ',')}
+                    </span>
+                  </div>
+                )}
                 
                 {paymentMethod !== 'pix' && (
                   <Button
@@ -673,7 +864,7 @@ const CheckoutPayment = () => {
                         Processando...
                       </>
                     ) : (
-                      `Pagar R$ ${totalAmount.toFixed(2).replace('.', ',')}`
+                      `Pagar R$ ${finalTotal.toFixed(2).replace('.', ',')}`
                     )}
                   </Button>
                 )}

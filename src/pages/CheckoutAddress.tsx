@@ -89,6 +89,14 @@ const CheckoutAddress = () => {
 
   const loadAddresses = async () => {
     try {
+      // Se não estiver logado, não buscar no Supabase; exibir formulário para cadastro de endereço
+      if (!user) {
+        setAddresses([]);
+        setShowAddForm(true);
+        setLoadingAddresses(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('addresses')
         .select('*')
@@ -280,8 +288,8 @@ const CheckoutAddress = () => {
             Voltar
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Endereço de Entrega</h1>
-            <p className="text-gray-600">Selecione ou adicione um endereço para entrega</p>
+            <h1 className="text-2xl font-bold text-gray-900">Endereço de Cobrança</h1>
+            <p className="text-gray-600">Selecione ou adicione um endereço para cobrança</p>
           </div>
         </div>
 
@@ -368,7 +376,7 @@ const CheckoutAddress = () => {
                 <CardHeader>
                   <CardTitle>Novo Endereço</CardTitle>
                   <CardDescription>
-                    Preencha os dados do seu endereço de entrega
+                    Preencha os dados do seu endereço de cobrança
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

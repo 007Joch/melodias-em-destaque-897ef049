@@ -1,16 +1,17 @@
 
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Home, Download } from "lucide-react";
-import { useCart } from "@/hooks/useCart";
+import { useNavigate } from "react-router-dom";
 
 interface CheckoutSuccessStepProps {
   paymentId: string;
+  totalAmount: number;
   onClose: () => void;
 }
 
-const CheckoutSuccessStep = ({ paymentId, onClose }: CheckoutSuccessStepProps) => {
-  const { getTotalPrice } = useCart();
-  const totalAmount = getTotalPrice();
+const CheckoutSuccessStep = ({ paymentId, totalAmount, onClose }: CheckoutSuccessStepProps) => {
+  const navigate = useNavigate();
 
   const formatDate = () => {
     return new Date().toLocaleDateString('pt-BR', {
@@ -36,9 +37,7 @@ const CheckoutSuccessStep = ({ paymentId, onClose }: CheckoutSuccessStepProps) =
         <h3 className="text-xl font-bold text-gray-900 mb-2">
           Pagamento Aprovado!
         </h3>
-        <p className="text-gray-600">
-          Seu pedido foi processado com sucesso
-        </p>
+
       </div>
 
       {/* Informações do pedido */}
@@ -61,19 +60,19 @@ const CheckoutSuccessStep = ({ paymentId, onClose }: CheckoutSuccessStepProps) =
 
       {/* Próximos passos */}
       <div className="text-left bg-blue-50 rounded-lg p-4">
-        <h4 className="font-medium mb-2">Próximos Passos:</h4>
+        <h4 className="font-medium mb-2">Próximos passos:</h4>
         <div className="space-y-2 text-sm text-gray-700">
           <div className="flex items-start gap-2">
             <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-            <p>Você receberá um email de confirmação com os detalhes da compra</p>
+            <p>Você receberá um e-mail de confirmação com os detalhes da compra e um link para baixar o arquivo PDF da versão.</p>
           </div>
           <div className="flex items-start gap-2">
             <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-            <p>Os links para download estarão disponíveis em sua conta</p>
+            <p>Os links para acesso no site e download do PDF também estarão disponíveis no menu <button onClick={() => { onClose(); navigate('/meus-pedidos'); }} className="text-primary underline hover:text-primary/80 font-medium">meus pedidos</button>.</p>
           </div>
           <div className="flex items-start gap-2">
             <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-            <p>Em caso de dúvidas, entre em contato conosco</p>
+            <p>Em caso de dúvidas, entre em contato conosco pelo e-mail <a href="mailto:rafoliveira@gmail.com" className="text-primary underline hover:text-primary/80">rafoliveira@gmail.com</a> ou pelo WhatsApp no número <a href="https://wa.me/5511946493583" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">+55 11 94649-3583</a>.</p>
           </div>
         </div>
       </div>
@@ -90,11 +89,14 @@ const CheckoutSuccessStep = ({ paymentId, onClose }: CheckoutSuccessStepProps) =
         
         <Button
           variant="outline"
-          onClick={() => window.location.href = "/minha-conta"}
+          onClick={() => {
+            onClose();
+            navigate('/meus-pedidos');
+          }}
           className="w-full"
         >
           <Download className="w-4 h-4 mr-2" />
-          Ir para Minha Conta
+          Ver Meus Pedidos
         </Button>
       </div>
       
@@ -104,7 +106,7 @@ const CheckoutSuccessStep = ({ paymentId, onClose }: CheckoutSuccessStepProps) =
           Obrigado pela sua compra! 🎵
         </h4>
         <p className="text-sm text-gray-600">
-          Esperamos que você aproveite sua música em bom português!
+          Agradecemos sua confiança no Musical em bom português. Bons estudos!
         </p>
       </div>
     </div>

@@ -1,7 +1,12 @@
 
+import React from "react";
 import { Music } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Footer = () => {
+  const { user } = useAuth();
+  
   const handleDesignerClick = () => {
     window.open('https://wa.me/5547991525739', '_blank');
   };
@@ -21,10 +26,9 @@ const Footer = () => {
 
           {/* Links */}
           <div className="flex flex-wrap justify-center md:justify-end space-x-4 sm:space-x-8 text-xs sm:text-sm text-gray-600">
-            <a href="#" className="hover:text-primary transition-colors duration-200">Termos de Uso</a>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Política de Privacidade</a>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Contato</a>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Sobre</a>
+            <Link to="/termos-de-uso" className="hover:text-primary transition-colors duration-200">Termos de Uso</Link>
+            <Link to="/perguntas-frequentes" className="hover:text-primary transition-colors duration-200">Perguntas Frequentes</Link>
+            <Link to="/contato" className="hover:text-primary transition-colors duration-200">Contato</Link>
           </div>
         </div>
 

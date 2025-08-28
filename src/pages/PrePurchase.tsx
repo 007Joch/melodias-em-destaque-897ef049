@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Music, Share2, Heart, Video, Loader2, Type, ShoppingCart, Lock } from "lucide-react";
+import { ArrowLeft, Music, Share2, Video, Loader2, Type, ShoppingCart, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 
-import { getVerse, incrementViews, getVersesByIds } from '../services/versesService';
+import { getVerse, getVersesByIds } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
+import { DEFAULT_VERSE_IMAGE } from '@/constants/images';
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
 
@@ -40,10 +41,10 @@ const displayData = (value: any, fallback: string = 'Não informado'): string =>
 };
 
 const PrePurchase = () => {
-  const { id, slug } = useParams<{ id?: string; slug?: string }>();
+  const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, openCartToStep } = useCart();
   const [verse, setVerse] = useState<Verse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,32 +53,9 @@ const PrePurchase = () => {
 
   useEffect(() => {
     const fetchVerse = async () => {
-      // Extrair identificador da URL atual
-      const currentPath = window.location.pathname;
-      const pathSegments = currentPath.split('/').filter(segment => segment);
-      
-      // O identificador pode estar em diferentes posições dependendo da estrutura da URL
-      let identifier = id || slug;
-      
-      // Se não temos identificador dos params, pegar da URL
-      if (!identifier && pathSegments.length > 0) {
-        // Pegar o último segmento que não seja vazio
-        identifier = pathSegments[pathSegments.length - 1];
-      }
-      
-      console.log('🔍 [PrePurchase] Informações da URL:', {
-        currentPath,
-        pathSegments,
-        id,
-        slug,
-        finalIdentifier: identifier,
-        routeParams: { id, slug },
-        windowLocation: window.location.href
-      });
-      
-      if (!identifier) {
-        console.error('❌ [PrePurchase] Nenhum identificador encontrado na URL');
-        setError('Identificador do verso não fornecido');
+      if (!id || isNaN(Number(id))) {
+        console.error('❌ [PrePurchase] ID inválido na URL');
+        setError('Identificador do verso inválido');
         setIsLoading(false);
         return;
       }
@@ -85,38 +63,29 @@ const PrePurchase = () => {
       try {
         setIsLoading(true);
         setError(null);
-        
-        console.log('🔍 [PrePurchase] Buscando verso com identificador:', identifier);
-        console.log('🔍 [PrePurchase] Tipo do identificador:', typeof identifier);
-        console.log('🔍 [PrePurchase] É número?', !isNaN(Number(identifier)));
-        
-        const data = await getVerse(identifier);
-        
+
+        console.log('🔍 [PrePurchase] Buscando verso com id:', id);
+        const data = await getVerse(id);
+
         console.log('🔍 [PrePurchase] Resultado da busca:', data);
-        
+
         if (data) {
           console.log('✅ [PrePurchase] Verso encontrado:', { id: data.id, titulo: data.titulo_pt_br || data.titulo_original });
           setVerse(data);
-          
-          // Incrementar visualizações
-          try {
-            await incrementViews(data.id);
-            console.log('✅ [PrePurchase] Visualizações incrementadas para verso:', data.id);
-          } catch (viewError) {
-            console.warn('⚠️ [PrePurchase] Erro ao incrementar visualizações:', viewError);
-          }
-          
-          // Buscar versões irmãs se existirem
+
           if (data.versoes_irmas && data.versoes_irmas.length > 0) {
             try {
               const relatedData = await getVersesByIds(data.versoes_irmas);
               setRelatedVerses(relatedData);
             } catch (err) {
               console.error('[PrePurchase] Erro ao carregar versões irmãs:', err);
+              setRelatedVerses([]);
             }
+          } else {
+            setRelatedVerses([]);
           }
         } else {
-          console.error('❌ [PrePurchase] Verso não encontrado para identificador:', identifier);
+          console.error('❌ [PrePurchase] Verso não encontrado para id:', id);
           setError('Verso não encontrado');
         }
       } catch (err) {
@@ -128,28 +97,63 @@ const PrePurchase = () => {
     };
 
     fetchVerse();
-  }, [id, slug]);
+  }, [id]);
+
+  // Função para validar imagem (mesma lógica do MusicCard)
+  const getValidImage = (image: string | null | undefined) => {
+    console.log('🖼️ [PrePurchase] Verificando imagem para o verso:', { id, title: verse?.titulo_pt_br || verse?.titulo_original, image });
+    
+    if (!image || image.trim() === '' || image === 'null') {
+      console.log('❌ [PrePurchase] Imagem inválida ou vazia, usando genérica');
+      return DEFAULT_VERSE_IMAGE;
+    }
+    
+    // Se a imagem contém o path do bucket capas ou é do Supabase, usar ela
+    if (image.includes('/capas/') || image.includes('supabase.co') || image.includes('hlrcvvaneofcpncbqjyg')) {
+      console.log('✅ [PrePurchase] Imagem válida do Supabase:', image);
+      return image;
+    }
+    
+    // Se for uma URL externa válida, usar ela
+    if (image.startsWith('http')) {
+      console.log('✅ [PrePurchase] URL externa válida:', image);
+      return image;
+    }
+    
+    console.log('⚠️ [PrePurchase] Imagem não reconhecida, usando genérica:', image);
+    return DEFAULT_VERSE_IMAGE;
+  };
 
   const handleAddToCart = async () => {
     if (!verse) return;
     
+    // Validar se o verso tem título válido usando titulo_pt_br ou titulo_original
+    const title = (verse.titulo_pt_br || verse.titulo_original || '').trim();
+    if (!title) {
+      console.error('Verso sem título válido, não pode ser adicionado ao carrinho');
+      return;
+    }
+    
     try {
       setIsAddingToCart(true);
       
+      // Usar a mesma lógica de ID do MusicCard para evitar duplicações
+      const verseId = verse.id ? String(verse.id) : `${title}-${verse.musical || ''}`.toLowerCase().replace(/\s+/g, '-');
+      
       const cartItem = {
-        id: verse.id.toString(),
-        title: verse.titulo_pt_br || verse.titulo_original || 'Título não disponível',
-        artist: 'Artista',
-        category: 'Teatro Musical',
-        musical: verse.musical || 'Musical não informado',
-        price: 15.00, // Preço padrão
-        image: '/musical-generic.svg'
+        id: verseId,
+        title: title,
+        artist: verse.musical || '',
+        category: verse.classificacao_vocal_alt && verse.classificacao_vocal_alt.length > 0 ? verse.classificacao_vocal_alt.join(', ') : 'Musical',
+        price: verse.valor || 15.00,
+        image: getValidImage(verse.url_imagem)
       };
       
+      console.log('Adicionando ao carrinho via PrePurchase:', cartItem);
       addToCart(cartItem);
       
-      // Redirecionar para o checkout
-      navigate('/checkout');
+      // Abrir o carrinho diretamente na etapa de endereço
+      openCartToStep('address');
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
     } finally {
@@ -173,7 +177,7 @@ const PrePurchase = () => {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600">Carregando verso...</p>
+          <p className="text-gray-600">Carregando versão...</p>
         </div>
       </div>
     );
@@ -197,7 +201,7 @@ const PrePurchase = () => {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Verso não encontrado</p>
+          <p className="text-gray-600 mb-4">Versão não encontrada</p>
           <Button onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
@@ -270,7 +274,7 @@ const PrePurchase = () => {
             )}
 
             {/* Áudio Brasileiro */}
-            {isValidData(verse.audio_instrumental) ? (
+            {isValidData((verse as any).audio_brasileiro) ? (
               <Card className="overflow-hidden rounded-xl border-0 shadow-lg">
                 <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50">
                   <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
@@ -279,7 +283,7 @@ const PrePurchase = () => {
                   </h2>
                   <div className="w-full rounded-lg overflow-hidden" style={{aspectRatio: '16/10'}}>
                     {(() => {
-                      const youtubeId = getYouTubeId(Array.isArray(verse.audio_instrumental) ? verse.audio_instrumental[0] : verse.audio_instrumental!);
+                      const youtubeId = getYouTubeId((verse as any).audio_brasileiro as string);
                       if (youtubeId) {
                         return (
                           <iframe
@@ -315,7 +319,7 @@ const PrePurchase = () => {
                       className="block w-full text-left p-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all duration-200"
                     >
                       <span className="text-primary font-medium hover:underline">
-                        {displayData(relatedVerse.titulo_pt_br || relatedVerse.titulo_original, 'Título não disponível')}
+                        {displayData(relatedVerse.titulo_original, 'Título não disponível')}
                       </span>
                     </button>
                   ))}
@@ -329,7 +333,7 @@ const PrePurchase = () => {
                 <Lock className="w-12 h-12 text-amber-600 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-amber-900 mb-2">Conteúdo Protegido</h3>
                 <p className="text-amber-800 mb-4">
-                  Para acessar o conteúdo completo deste verso, incluindo a letra formatada e o arquivo PDF para download, você precisa adquirir este item.
+                  Para acessar o conteúdo completo desta versão, incluindo a letra formatada e o arquivo PDF para download, você precisa adquirir este item.
                 </p>
                 <Button
                   onClick={handleAddToCart}
@@ -353,13 +357,7 @@ const PrePurchase = () => {
 
             {/* Botões de Ação Secundários */}
             <div className="flex gap-3 justify-center">
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full border-gray-300 hover:bg-gray-50"
-              >
-                <Heart className="w-4 h-4" />
-              </Button>
+
               <Button
                 variant="outline"
                 size="icon"
@@ -370,22 +368,14 @@ const PrePurchase = () => {
             </div>
           </div>
 
-          {/* Informações do Verso */}
+          {/* Informações da Versão */}
           <div className="space-y-6">
             {/* Cabeçalho */}
             <div>
-              <span className="inline-block px-3 py-1 text-sm font-medium text-primary bg-primary/10 rounded-full mb-3">
-                {displayData(verse.estilo?.[0], 'Estilo não definido')}
-              </span>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {displayData(verse.titulo_original || verse.titulo_pt_br, 'Título')}
               </h1>
               <p className="text-xl text-gray-600 mb-4">{displayData(verse.musical, 'Musical')}</p>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span>{(verse.visualizacoes || 0).toLocaleString()} visualizações</span>
-                <span>•</span>
-                <span>{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
-              </div>
             </div>
 
             {/* Título Traduzido */}
@@ -404,12 +394,12 @@ const PrePurchase = () => {
             <Card className="p-6 border-0 bg-gradient-to-r from-primary/5 to-purple-50 rounded-xl">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Music className="w-5 h-5 mr-2 text-primary" />
-                Informações do Musical
+                Informações da Versão
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <span className="text-sm font-medium text-gray-600">Origem:</span>
-                  <p className="text-gray-900 font-medium">{displayData(verse.musical)}</p>
+                  <p className="text-gray-900 font-medium">{verse.origem ?? ''}</p>
                 </div>
                 {isValidData(verse.compositor) && (
                   <div>
@@ -437,10 +427,77 @@ const PrePurchase = () => {
                 )}
                 <div>
                   <span className="text-sm font-medium text-gray-600">Versionado em:</span>
-                  <p className="text-gray-900">{verse.versionado_em ? new Date(verse.versionado_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</p>
+                  <p className="text-gray-900">{verse.versionado_em ? (() => {
+                    const [year, month, day] = verse.versionado_em.split('-');
+                    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString('pt-BR');
+                  })() : 'Data não disponível'}</p>
                 </div>
               </div>
             </Card>
+
+            {/* Seção Unificada: Classificação Vocal, Estilo, Natureza e Dificuldade */}
+            {((verse.classificacao_vocal_alt && Array.isArray(verse.classificacao_vocal_alt) && verse.classificacao_vocal_alt.length > 0) ||
+              (verse.estilo && verse.estilo.length > 0) ||
+              (verse.natureza && verse.natureza.length > 0) ||
+              (verse.dificuldade && typeof verse.dificuldade === 'number')) && (
+              <Card className="p-6 border-0 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl">
+                <div className="space-y-4">
+                  {/* Classificação Vocal */}
+                  {verse.classificacao_vocal_alt && Array.isArray(verse.classificacao_vocal_alt) && verse.classificacao_vocal_alt.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Classificação Vocal</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {verse.classificacao_vocal_alt.map((classificacao, index) => (
+                          <span key={index} className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
+                            {classificacao}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Estilo */}
+                  {verse.estilo && verse.estilo.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Estilo</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {verse.estilo.map((item, index) => (
+                          <span key={index} className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Natureza */}
+                  {verse.natureza && verse.natureza.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Natureza</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {verse.natureza.map((item, index) => (
+                          <span key={index} className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dificuldade */}
+                  {verse.dificuldade && typeof verse.dificuldade === 'number' && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Dificuldade</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full">
+                          {verse.dificuldade} de 5
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
 
             {/* Informações Adicionais */}
             {isValidData(verse.versao_brasileira) && (

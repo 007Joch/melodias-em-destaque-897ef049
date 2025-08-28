@@ -1,29 +1,44 @@
 import React from "react";
-import { Search, User, ShoppingCart } from "lucide-react";
+import { Search, User, ShoppingCart, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import CartDrawer from "./CartDrawer";
 import MobileMenu from "./MobileMenu";
-import SearchResults from "./SearchResults";
-import { searchVerses, Verse } from "../services/versesService";
+// import SearchResults from "./SearchResults"; // Mini busca desativada temporariamente
+import { Verse } from "../services/versesService"; // Mini busca: import de searchVerses removido temporariamente
 
 const Header = () => {
-  const { getTotalItems } = useCart();
+  const { getTotalItems, isCartOpen, setIsCartOpen } = useCart();
   const { user } = useAuth();
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const navigate = useNavigate();
+  // Removido estado local - agora usando estado global do carrinho
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<{ exact: Verse | null, similar: Verse[] }>({ exact: null, similar: [] });
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const searchRef = useRef<HTMLDivElement>(null);
   const totalItems = getTotalItems();
 
-  // Função para realizar a busca
+  // Escutar eventos de carrinho limpo para forçar re-renderização do badge
+  useEffect(() => {
+    const handleCartCleared = () => {
+      console.log('🔄 [Header] Carrinho limpo detectado, forçando atualização do badge');
+      setForceUpdate(prev => prev + 1);
+    };
+
+    window.addEventListener('cart-cleared', handleCartCleared);
+    return () => window.removeEventListener('cart-cleared', handleCartCleared);
+  }, []);
+
+  // Função para realizar a busca (mini resultados)
+  // Mini busca desativada temporariamente — função comentada para evitar chamadas enquanto digita
+  /*
   const handleSearch = async (term: string) => {
     if (!term.trim()) {
       setSearchResults({ exact: null, similar: [] });
@@ -43,8 +58,11 @@ const Header = () => {
       setIsSearching(false);
     }
   };
+  */
 
-  // Debounce para a busca
+  // Debounce para a busca incremental
+  // Mini busca desativada temporariamente — debounce comentado
+  /*
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchTerm) {
@@ -54,6 +72,7 @@ const Header = () => {
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
+  */
 
   // Fechar resultados ao clicar fora
   useEffect(() => {
@@ -63,14 +82,15 @@ const Header = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      handleSearch(searchTerm);
+      // Redirecionar para a página dedicada de busca
+      navigate(`/busca?q=${encodeURIComponent(searchTerm)}`);
     }
   };
 
@@ -106,10 +126,9 @@ const Header = () => {
                 <form onSubmit={handleSearchSubmit} className="w-full">
                   <Input
                     type="text"
-                    placeholder="Procure por músicas, artistas, letras..."
+                    placeholder="Pesquisar"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onFocus={() => searchTerm && setShowResults(true)}
                     className="w-full pl-12 pr-16 py-3 text-lg bg-gray-50 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                   />
                   <Button
@@ -122,7 +141,8 @@ const Header = () => {
                   </Button>
                 </form>
                 
-                {/* Resultados da Busca */}
+                {/* Resultados da Busca (desktop) — Mini busca desativada temporariamente */}
+                {/**
                 {showResults && (
                   <SearchResults
                     searchTerm={searchTerm}
@@ -131,6 +151,7 @@ const Header = () => {
                     onClose={closeSearchResults}
                   />
                 )}
+                **/}
               </div>
             </div>
 
@@ -142,11 +163,13 @@ const Header = () => {
                 size="sm" 
                 className="rounded-full relative"
                 onClick={() => setIsCartOpen(true)}
+                key={`cart-button-${forceUpdate}`}
               >
                 <ShoppingCart className="w-5 h-5" />
                 {totalItems > 0 && (
                   <Badge 
                     className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary animate-pulse"
+                    key={`cart-badge-${totalItems}-${forceUpdate}`}
                   >
                     {totalItems}
                   </Badge>
@@ -154,7 +177,7 @@ const Header = () => {
                 <span className="ml-2 hidden sm:inline">Carrinho</span>
               </Button>
 
-              {/* Botão Entrar - Visível apenas para usuários não logados */}
+              {/* Botões para usuários não logados */}
               {!user && (
                 <Link to="/login">
                   <Button variant="ghost" size="sm" className="rounded-full">
@@ -173,10 +196,9 @@ const Header = () => {
               <form onSubmit={handleSearchSubmit} className="w-full">
                 <Input
                   type="text"
-                  placeholder="Procurar músicas..."
+                  placeholder="Pesquisar"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onFocus={() => searchTerm && setShowResults(true)}
                   className="w-full pl-10 pr-12 py-2 bg-gray-50 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 />
                 <Button
@@ -189,7 +211,8 @@ const Header = () => {
                 </Button>
               </form>
               
-              {/* Resultados da Busca Mobile */}
+              {/* Resultados da Busca Mobile — Mini busca desativada temporariamente */}
+              {/**
               {showResults && (
                 <SearchResults
                   searchTerm={searchTerm}
@@ -198,6 +221,7 @@ const Header = () => {
                   onClose={closeSearchResults}
                 />
               )}
+              **/}
             </div>
           </div>
         </div>

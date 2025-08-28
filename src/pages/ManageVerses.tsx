@@ -1,18 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Eye, Music, AlertTriangle, CheckSquare, Square } from 'lucide-react';
+import { Search, Filter, Plus, Edit, Trash2, Music, AlertTriangle, CheckSquare, Square, User, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Link, useNavigate } from 'react-router-dom';
-import { CartProvider } from '@/hooks/useCart';
+
 import { useAuth } from '@/hooks/useAuth';
-import { getVersesPaginated, deleteVerse, deleteMultipleVerses, deleteAllVerses, getCategories, generateSlug } from '../services/versesService';
+import { getVersesPaginated, deleteVerse, deleteMultipleVerses, deleteAllVerses, getCategories, generateSlug, getAllVerses } from '../services/versesService';
 import { Database } from '../integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
+import { CartProvider } from '@/hooks/useCart';
+
+// Função para obter categoria da classificação vocal
+const getCategoryFromVerse = (verse: any): string => {
+  // Usa apenas a classificacao_vocal_alt, sem fallbacks
+  if (verse.classificacao_vocal_alt && Array.isArray(verse.classificacao_vocal_alt) && verse.classificacao_vocal_alt.length > 0) {
+    return verse.classificacao_vocal_alt.join(', ');
+  }
+  
+  // Retorna vazio se não houver classificação
+  return '';
+};
 
 // Interface específica para Verse com tipos mais flexíveis
 interface Verse {
@@ -32,20 +44,25 @@ interface Verse {
 }
 
 const ManageVerses: React.FC = () => {
-  const { user, profile, loading: authLoading } = useAuth();
+  // Hooks devem estar no topo, antes de qualquer return condicional
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
+  
   // Estados do componente
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [sortBy, setSortBy] = useState('titulo_pt_br');
+  const [filterType, setFilterType] = useState('titulo'); // 'titulo', 'musical', 'data'
+  const [musicalGroups, setMusicalGroups] = useState<{[key: string]: Verse[]}>({});
   const [verses, setVerses] = useState<Verse[]>([]);
+  const [allVerses, setAllVerses] = useState<Verse[]>([]); // Todos os versos para filtros
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalVerses, setTotalVerses] = useState(0);
+  const [totalActiveVerses, setTotalActiveVerses] = useState(0);
   const [hasMoreData, setHasMoreData] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -58,66 +75,54 @@ const ManageVerses: React.FC = () => {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const ITEMS_PER_PAGE = 50;
 
-  console.log('🔍 ManageVerses - Estado da autenticação:', {
-    user: user?.email,
-    profile: profile?.role,
-    authLoading
-  });
+  const loadAllVerses = async () => {
+    try {
+      const allVersesData = await getAllVerses();
+      setAllVerses(allVersesData);
+      setTotalVerses(allVersesData.length);
+      setTotalActiveVerses(allVersesData.filter(verse => verse.status === 'active').length);
+    } catch (error) {
+      console.error('Erro ao carregar todos os versos:', error);
+    }
+  };
 
-  if (authLoading) {
-    console.log('⏳ ManageVerses - Carregando autenticação...');
-    return (
-      <CartProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Header />
-          <div className="container mx-auto px-4 py-8">
-            <div className="text-center">
-              <p className="text-gray-600">Carregando...</p>
-            </div>
-          </div>
-          <Footer />
-        </div>
-      </CartProvider>
-    );
-  }
+  const loadVerses = async (page = 1, append = false) => {
+    try {
+      if (page === 1) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
 
-  // Verificar se o usuário é admin
-  const isAdmin = user && profile && profile.role === 'admin';
-  console.log('🔐 ManageVerses - Verificação de admin:', {
-    isAdmin,
-    userExists: !!user,
-    profileExists: !!profile,
-    role: profile?.role
-  });
-
-  if (!isAdmin) {
-    console.log('❌ ManageVerses - Acesso negado');
-    return (
-      <CartProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Header />
-          <div className="container mx-auto px-4 py-8">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Acesso Negado</h1>
-              <p className="text-gray-600 mb-6">Você não tem permissão para acessar esta página.</p>
-              <p className="text-sm text-gray-500 mb-4">
-                Debug: User: {user?.email || 'Nenhum'} | Profile: {profile?.role || 'Nenhum'}
-              </p>
-              <Button onClick={() => navigate('/')} className="bg-primary hover:bg-primary/90">
-                Voltar ao Início
-              </Button>
-            </div>
-          </div>
-          <Footer />
-        </div>
-      </CartProvider>
-    );
-  }
-
-  console.log('✅ ManageVerses - Acesso autorizado para admin');
+      const result = await getVersesPaginated(page, 50);
+      
+      if (append) {
+        setVerses(prev => [...prev, ...result.data]);
+      } else {
+        setVerses(result.data);
+      }
+      
+      setHasMoreData(result.hasMore);
+      setCurrentPage(page);
+    } catch (error) {
+      console.error('Erro ao carregar versos:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar versos",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     const fetchInitialData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
       try {
         setIsLoading(true);
         const [versesResult, categoriesData] = await Promise.all([
@@ -129,6 +134,9 @@ const ManageVerses: React.FC = () => {
         setHasMoreData(versesResult.hasMore);
         setCurrentPage(1);
         setCategories(categoriesData);
+        
+        // Carregar todos os versos para estatísticas
+        await loadAllVerses();
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
       } finally {
@@ -139,33 +147,96 @@ const ManageVerses: React.FC = () => {
     fetchInitialData();
   }, []);
 
-  // Filtrar versos baseado na busca e filtros
-  const filteredVerses = verses.filter(verse => {
-    const matchesSearch = (verse.titulo_original || 'Dados inconsistentes').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (verse.musical || 'Dados inconsistentes').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || (verse.estilo && verse.estilo.includes(selectedCategory));
-    const matchesStatus = selectedStatus === 'all' || verse.status === selectedStatus;
+  // Função para agrupar versos por musical
+  const groupVersesByMusical = (versesToGroup: Verse[]) => {
+    const grouped = versesToGroup.reduce((acc, verse) => {
+      const musical = verse.musical || 'Sem Musical';
+      if (!acc[musical]) {
+        acc[musical] = [];
+      }
+      acc[musical].push(verse);
+      return acc;
+    }, {} as {[key: string]: Verse[]});
     
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+    // Ordenar versos dentro de cada grupo alfabeticamente
+    Object.keys(grouped).forEach(musical => {
+      grouped[musical].sort((a, b) => 
+        (a.titulo_original || 'Dados inconsistentes').localeCompare(b.titulo_original || 'Dados inconsistentes')
+      );
+    });
+    
+    return grouped;
+  };
 
-  // Ordenar versos
-  const sortedVerses = [...filteredVerses].sort((a, b) => {
-    switch (sortBy) {
-      case 'titulo_pt_br':
-        return (a.titulo_original || 'Dados inconsistentes').localeCompare(b.titulo_original || 'Dados inconsistentes');
-      case 'musical':
-        return (a.musical || 'Dados inconsistentes').localeCompare(b.musical || 'Dados inconsistentes');
-      case 'visualizacoes':
-        return (b.visualizacoes || 0) - (a.visualizacoes || 0);
-      case 'criada_em':
-        return new Date(b.criada_em || 0).getTime() - new Date(a.criada_em || 0).getTime();
-      default:
-        return 0;
+  // Filtrar versos baseado no tipo de filtro usando TODOS os versos
+  const getFilteredVerses = () => {
+    let filtered = allVerses.filter(verse => {
+      const matchesCategory = selectedCategory === 'all' || (verse.estilo && verse.estilo.includes(selectedCategory));
+      const matchesStatus = selectedStatus === 'all' || 
+                           (selectedStatus === 'active' && verse.status === 'active') ||
+                           (selectedStatus === 'inactive' && verse.status !== 'active');
+      
+      let matchesSearch = true;
+       if (searchTerm.trim()) {
+         if (filterType === 'titulo') {
+           // Buscar apenas por titulo_original
+           matchesSearch = (verse.titulo_original || '').toLowerCase().includes(searchTerm.toLowerCase());
+         } else if (filterType === 'musical') {
+           // Buscar apenas por musical
+           matchesSearch = (verse.musical || '').toLowerCase().includes(searchTerm.toLowerCase());
+         } else if (filterType === 'data') {
+           // Para filtro de data, buscar por título original como fallback
+           matchesSearch = (verse.titulo_original || '').toLowerCase().includes(searchTerm.toLowerCase());
+         }
+       }
+      
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+    
+    return filtered;
+  };
+
+  // Obter versos filtrados
+  const filteredVerses = getFilteredVerses();
+
+  // Ordenar ou agrupar baseado no tipo de filtro
+  const getDisplayData = () => {
+    if (filterType === 'musical') {
+      // Agrupar por musical e ordenar musicais alfabeticamente
+      const grouped = groupVersesByMusical(filteredVerses);
+      const sortedMusicals = Object.keys(grouped).sort((a, b) => 
+        a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+      );
+      return { type: 'grouped', data: grouped, musicals: sortedMusicals };
+    } else {
+      // Ordenar lista simples
+      const sorted = [...filteredVerses].sort((a, b) => {
+        switch (sortBy) {
+          case 'titulo_pt_br':
+            return (a.titulo_pt_br || 'Dados inconsistentes').localeCompare(b.titulo_pt_br || 'Dados inconsistentes');
+          case 'musical':
+            return (a.musical || 'Dados inconsistentes').localeCompare(b.musical || 'Dados inconsistentes');
+          case 'criada_em':
+            return new Date(b.criada_em || 0).getTime() - new Date(a.criada_em || 0).getTime();
+          default:
+            return (a.titulo_original || 'Dados inconsistentes').localeCompare(b.titulo_original || 'Dados inconsistentes');
+        }
+      });
+      return { type: 'list', data: sorted };
     }
-  });
+  };
+
+  const displayData = getDisplayData();
 
   const handleEdit = (id: number) => {
+    navigate(`/edit-verse/${id}`);
+  };
+
+  const handleView = (id: number) => {
+    navigate(`/verse/${id}`);
+  };
+
+  const handleTitleClick = (id: number) => {
     navigate(`/edit-verse/${id}`);
   };
 
@@ -175,18 +246,13 @@ const ManageVerses: React.FC = () => {
   };
 
   const handleLoadMore = async () => {
-    if (isLoadingMore || !hasMoreData) return;
+    if (isLoadingMore) return;
     
     try {
       setIsLoadingMore(true);
       const nextPage = currentPage + 1;
       console.log(`Carregando página ${nextPage}...`);
       
-      const result = await getVersesPaginated(nextPage, ITEMS_PER_PAGE);
-      console.log(`Novos versos carregados: ${result.data.length}`);
-      
-      setVerses(prev => [...prev, ...result.data]);
-      setHasMoreData(result.hasMore);
       setCurrentPage(nextPage);
     } catch (err) {
       console.error('Erro ao carregar mais versos:', err);
@@ -383,22 +449,60 @@ const ManageVerses: React.FC = () => {
     }
   };
 
-  return (
-    <CartProvider>
+  if (isLoading) {
+    return (
       <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center">
+              <p className="text-gray-600">Carregando...</p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex items-center justify-center min-h-[400px]">
+              <Card className="w-full max-w-md mx-4">
+                <CardContent className="p-8 text-center">
+                  <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
+                  <p className="text-gray-600 mb-4">Você precisa estar logado para acessar esta página.</p>
+                  <Link to="/login">
+                    <Button className="w-full">
+                      Fazer Login
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+          <Footer />
+        </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
         <Header />
         
         <main className="container mx-auto px-4 sm:px-6 py-8">
           {/* Cabeçalho da Página */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Gerenciar Versos</h1>
-              <p className="text-gray-600">Gerencie todos os seus versos musicais</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Gerenciar Versões</h1>
+              <p className="text-gray-600">Gerencie todas as suas versões musicais</p>
             </div>
             <Link to="/create-verse">
               <Button className="mt-4 sm:mt-0 bg-primary hover:bg-primary/90 rounded-full">
                 <Plus className="w-4 h-4 mr-2" />
-                Novo Verso
+                Nova Versão
               </Button>
             </Link>
           </div>
@@ -409,7 +513,7 @@ const ManageVerses: React.FC = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium text-blue-700">
-                    {selectedVerses.size} verso(s) selecionado(s)
+                    {selectedVerses.size} versão(ões) selecionada(s)
                   </span>
                   <Button
                     variant="outline"
@@ -457,7 +561,7 @@ const ManageVerses: React.FC = () => {
                   {selectAll ? 'Desmarcar Todos' : 'Selecionar Todos'}
                 </Button>
                 <span className="text-sm text-gray-600">
-                  Total: {totalVerses} versos
+                  Total: {totalVerses} versões
                 </span>
               </div>
               <Button
@@ -481,7 +585,7 @@ const ManageVerses: React.FC = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    placeholder="Buscar por título ou artista..."
+                    placeholder={filterType === 'titulo' ? 'Buscar por título original...' : filterType === 'musical' ? 'Buscar por musical...' : 'Buscar versões...'}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 rounded-full border-gray-300 focus:border-primary"
@@ -515,17 +619,26 @@ const ManageVerses: React.FC = () => {
               </Select>
 
               {/* Ordenação */}
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="rounded-full border-gray-300">
-                  <SelectValue placeholder="Ordenar por" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="titulo_pt_br">Título</SelectItem>
-                  <SelectItem value="musical">Musical</SelectItem>
-                  <SelectItem value="visualizacoes">Visualizações</SelectItem>
-                  <SelectItem value="criada_em">Data de criação</SelectItem>
-                </SelectContent>
-              </Select>
+              <Select value={filterType} onValueChange={(value) => {
+                  setFilterType(value);
+                  setSearchTerm(''); // Limpar busca ao trocar filtro
+                  if (value === 'titulo') {
+                    setSortBy('titulo_pt_br');
+                  } else if (value === 'musical') {
+                    setSortBy('musical');
+                  } else if (value === 'data') {
+                    setSortBy('criada_em');
+                  }
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtrar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="titulo">Título</SelectItem>
+                    <SelectItem value="musical">Musical</SelectItem>
+                    <SelectItem value="data">Data de criação</SelectItem>
+                  </SelectContent>
+                </Select>
             </div>
           </Card>
 
@@ -534,8 +647,8 @@ const ManageVerses: React.FC = () => {
             <Card className="p-6 border-0 shadow-sm bg-gradient-to-br from-primary/10 to-purple-50">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total de Versos</p>
-                  <p className="text-2xl font-bold text-gray-900">{verses.length}</p>
+                  <p className="text-sm font-medium text-gray-600">Total de Versões</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalVerses}</p>
                 </div>
                 <Music className="w-8 h-8 text-primary" />
               </div>
@@ -543,23 +656,15 @@ const ManageVerses: React.FC = () => {
             <Card className="p-6 border-0 shadow-sm bg-gradient-to-br from-green-50 to-emerald-50">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Versos Ativos</p>
-                  <p className="text-2xl font-bold text-gray-900">{verses.filter(v => v.status === 'active').length}</p>
+                  <p className="text-sm font-medium text-gray-600">Versões Ativas</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalActiveVerses}</p>
                 </div>
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                   <div className="w-3 h-3 bg-white rounded-full"></div>
                 </div>
               </div>
             </Card>
-            <Card className="p-6 border-0 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total de Visualizações</p>
-                  <p className="text-2xl font-bold text-gray-900">{verses.reduce((acc, v) => acc + (v.visualizacoes || 0), 0).toLocaleString()}</p>
-                </div>
-                <Eye className="w-8 h-8 text-blue-500" />
-              </div>
-            </Card>
+
           </div>
 
           {/* Lista de Versos */}
@@ -567,22 +672,123 @@ const ManageVerses: React.FC = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Versos ({sortedVerses.length})
+                  Versões ({filteredVerses.length})
                 </h2>
                 <div className="text-sm text-gray-500">
-                  Mostrando {sortedVerses.length} de {totalVerses} versos
+                  Mostrando {filteredVerses.length} de {totalVerses} versões
                 </div>
               </div>
 
-              {sortedVerses.length === 0 ? (
+              {filteredVerses.length === 0 ? (
                 <div className="text-center py-12">
                   <Music className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhum verso encontrado</p>
+                  <p className="text-gray-500">Nenhuma versão encontrada</p>
                   <p className="text-sm text-gray-400 mt-1">Tente ajustar os filtros de busca</p>
                 </div>
+              ) : displayData.type === 'grouped' ? (
+                // Exibição agrupada por musical
+                displayData.musicals?.map((musical) => (
+                  <div key={musical} className="space-y-3 mb-6">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border-l-4 border-blue-500">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{musical}</h3>
+                      <p className="text-sm text-gray-600">{displayData.data[musical].length} versão(ões)</p>
+                    </div>
+                    
+                    <div className="ml-4 space-y-3">
+                      {(displayData.data[musical] as Verse[]).map((verse) => (
+                        <div key={verse.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center space-x-4">
+                            {/* Checkbox de Seleção */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSelectVerse(verse.id)}
+                              className="p-1 h-auto hover:bg-transparent"
+                            >
+                              {selectedVerses.has(verse.id) ? (
+                                <CheckSquare className="w-5 h-5 text-blue-600" />
+                              ) : (
+                                <Square className="w-5 h-5 text-gray-400 hover:text-blue-600" />
+                              )}
+                            </Button>
+                            {/* Imagem do Verso */}
+                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-primary/10 to-purple-100 flex items-center justify-center">
+                              {verse.url_imagem ? (
+                                <img src={verse.url_imagem} alt={verse.titulo_pt_br} className="w-full h-full object-cover" />
+                              ) : (
+                                <Music className="w-6 h-6 text-primary/60" />
+                              )}
+                            </div>
+
+                            {/* Informações do Verso */}
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <h4 
+                                  className="font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                                  onClick={() => handleTitleClick(verse.id)}
+                                >
+                                  {verse.titulo_original || 'Dados inconsistentes'}
+                                </h4>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  verse.status === 'active' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {verse.status === 'active' ? 'Ativo' : 'Inativo'}
+                                </span>
+                              </div>
+                              <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500">
+                                {verse.classificacao_vocal_alt && Array.isArray(verse.classificacao_vocal_alt) && verse.classificacao_vocal_alt.length > 0 ? (
+                                  verse.classificacao_vocal_alt.map((classificacao, index) => (
+                                    <span key={index} className="px-2 py-1 bg-primary/10 text-primary rounded-full">
+                                      {classificacao}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded-full">Sem classificação</span>
+                                )}
+                                <span className="text-gray-400">•</span>
+                                <span>Criado em {verse.criada_em ? new Date(verse.criada_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Ações */}
+                          <div className="flex items-center space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="rounded-full hover:bg-green-50 hover:border-green-300 text-green-600"
+                              onClick={() => handleView(verse.id)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="rounded-full hover:bg-blue-50 hover:border-blue-300"
+                              onClick={() => handleEdit(verse.id)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="rounded-full hover:bg-red-50 hover:border-red-300 text-red-600"
+                              onClick={() => handleDelete(verse)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
               ) : (
+                // Exibição em lista simples
                 <div className="space-y-4">
-                  {sortedVerses.map((verse) => (
+                  {(displayData.data as Verse[]).slice(0, currentPage * ITEMS_PER_PAGE).map((verse) => (
                     <div key={verse.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                       <div className="flex items-center space-x-4">
                         {/* Checkbox de Seleção */}
@@ -610,7 +816,12 @@ const ManageVerses: React.FC = () => {
                         {/* Informações do Verso */}
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="font-semibold text-gray-900">{verse.titulo_original || 'Dados inconsistentes'}</h3>
+                            <h3 
+                              className="font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                              onClick={() => handleTitleClick(verse.id)}
+                            >
+                              {verse.titulo_original || 'Dados inconsistentes'}
+                            </h3>
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               verse.status === 'active' 
                                 ? 'bg-green-100 text-green-800' 
@@ -620,9 +831,17 @@ const ManageVerses: React.FC = () => {
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mb-1">{verse.musical || 'Dados inconsistentes'}</p>
-                          <div className="flex items-center space-x-4 text-xs text-gray-500">
-                            <span className="px-2 py-1 bg-primary/10 text-primary rounded-full">{verse.estilo?.[0] || 'Sem categoria'}</span>
-                            <span>{(verse.visualizacoes || 0).toLocaleString()} visualizações</span>
+                          <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500">
+                            {verse.classificacao_vocal_alt && Array.isArray(verse.classificacao_vocal_alt) && verse.classificacao_vocal_alt.length > 0 ? (
+                              verse.classificacao_vocal_alt.map((classificacao, index) => (
+                                <span key={index} className="px-2 py-1 bg-primary/10 text-primary rounded-full">
+                                  {classificacao}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded-full">Sem classificação</span>
+                            )}
+                            <span className="text-gray-400">•</span>
                             <span>Criado em {verse.criada_em ? new Date(verse.criada_em).toLocaleDateString('pt-BR') : 'Data não disponível'}</span>
                           </div>
                         </div>
@@ -630,11 +849,14 @@ const ManageVerses: React.FC = () => {
 
                       {/* Ações */}
                       <div className="flex items-center space-x-2">
-                        <Link to={`/${generateSlug(verse.titulo_pt_br || '')}`}>
-                          <Button variant="outline" size="sm" className="rounded-full">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-full hover:bg-green-50 hover:border-green-300 text-green-600"
+                          onClick={() => handleView(verse.id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -658,10 +880,10 @@ const ManageVerses: React.FC = () => {
               )}
             </div>
             
-            {hasMoreData && (
+            {displayData.type === 'list' && filteredVerses.length > (displayData.data as Verse[]).slice(0, currentPage * ITEMS_PER_PAGE).length && (
               <div className="flex flex-col items-center mt-8 space-y-2">
                 <p className="text-sm text-gray-600">
-                  Exibindo {verses.length} de {totalVerses} versos
+                  Exibindo {Math.min((displayData.data as Verse[]).slice(0, currentPage * ITEMS_PER_PAGE).length, filteredVerses.length)} de {filteredVerses.length} versos
                 </p>
                 <button
                   onClick={handleLoadMore}
@@ -693,9 +915,9 @@ const ManageVerses: React.FC = () => {
                 <span>Confirmar Exclusão</span>
               </DialogTitle>
               <DialogDescription className="text-left">
-                Tem certeza que deseja excluir o verso <strong>"{verseToDelete?.titulo_pt_br}"</strong>?
+                Tem certeza que deseja excluir a versão <strong>"{verseToDelete?.titulo_pt_br}"</strong>?
                 <br /><br />
-                Esta ação não pode ser desfeita. O verso será marcado como inativo e não aparecerá mais na aplicação.
+                Esta ação não pode ser desfeita. A versão será marcada como inativa e não aparecerá mais na aplicação.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex space-x-2">
@@ -738,9 +960,9 @@ const ManageVerses: React.FC = () => {
                 <span>Confirmar Exclusão em Massa</span>
               </DialogTitle>
               <DialogDescription className="text-left">
-                Tem certeza que deseja excluir <strong>{selectedVerses.size} verso(s)</strong> selecionado(s)?
+                Tem certeza que deseja excluir <strong>{selectedVerses.size} versão(ões)</strong> selecionada(s)?
                 <br /><br />
-                Esta ação não pode ser desfeita. Os versos serão permanentemente removidos do banco de dados.
+                Esta ação não pode ser desfeita. As versões serão permanentemente removidas do banco de dados.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex space-x-2">
@@ -766,7 +988,7 @@ const ManageVerses: React.FC = () => {
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Excluir {selectedVerses.size} Verso(s)
+                    Excluir {selectedVerses.size} Versão(ões)
                   </>
                 )}
               </Button>
@@ -780,12 +1002,12 @@ const ManageVerses: React.FC = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center space-x-2">
                 <AlertTriangle className="w-5 h-5 text-red-500" />
-                <span>Confirmar Exclusão de Todos os Versos</span>
+                <span>Confirmar Exclusão de Todas as Versões</span>
               </DialogTitle>
               <DialogDescription className="text-left">
-                <strong>ATENÇÃO:</strong> Tem certeza que deseja excluir <strong>TODOS os {totalVerses} versos</strong> do banco de dados?
+                <strong>ATENÇÃO:</strong> Tem certeza que deseja excluir <strong>TODAS as {totalVerses} versões</strong> do banco de dados?
                 <br /><br />
-                Esta ação é <strong>IRREVERSÍVEL</strong> e removerá permanentemente todos os versos, incluindo suas imagens, áudios e dados associados.
+                Esta ação é <strong>IRREVERSÍVEL</strong> e removerá permanentemente todas as versões, incluindo suas imagens, áudios e dados associados.
                 <br /><br />
                 Digite <strong>"CONFIRMAR"</strong> para prosseguir:
               </DialogDescription>
@@ -796,9 +1018,9 @@ const ManageVerses: React.FC = () => {
                 placeholder="Digite CONFIRMAR"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 onChange={(e) => {
-                  const confirmButton = document.getElementById('confirm-delete-all');
+                  const confirmButton = document.getElementById('confirm-delete-all') as HTMLButtonElement;
                   if (confirmButton) {
-                    (confirmButton as HTMLButtonElement).disabled = (e.target as HTMLInputElement).value !== 'CONFIRMAR' || isBulkDeleting;
+                    confirmButton.disabled = e.target.value !== 'CONFIRMAR' || isBulkDeleting;
                   }
                 }}
               />
@@ -835,7 +1057,6 @@ const ManageVerses: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </CartProvider>
   );
 };
 

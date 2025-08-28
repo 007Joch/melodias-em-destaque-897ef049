@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       addresses: {
@@ -90,36 +95,96 @@ export type Database = {
         }
         Relationships: []
       }
+      coupons: {
+        Row: {
+          id: string
+          code: string
+          discount_percent: number
+          expires_at: string | null
+          enabled: boolean
+          usage_limit: number | null
+          usage_count: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          code: string
+          discount_percent: number
+          expires_at?: string | null
+          enabled?: boolean
+          usage_limit?: number | null
+          usage_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          code?: string
+          discount_percent?: number
+          expires_at?: string | null
+          enabled?: boolean
+          usage_limit?: number | null
+          usage_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          account_status: string | null
+          blocked_reason: string | null
+          blocked_until: string | null
           cpf: string | null
           created_at: string | null
           endereco: Json | null
+          failed_login_attempts: number | null
           id: string
+          last_failed_login: string | null
           name: string
           role: string | null
           telefone: string | null
           updated_at: string | null
+          membership_started_at: string | null
+          membership_expires_at: string | null
+          membership_lifetime: boolean | null
         }
         Insert: {
+          account_status?: string | null
+          blocked_reason?: string | null
+          blocked_until?: string | null
           cpf?: string | null
           created_at?: string | null
           endereco?: Json | null
+          failed_login_attempts?: number | null
           id: string
+          last_failed_login?: string | null
           name: string
           role?: string | null
           telefone?: string | null
           updated_at?: string | null
+          membership_started_at?: string | null
+          membership_expires_at?: string | null
+          membership_lifetime?: boolean | null
         }
         Update: {
+          account_status?: string | null
+          blocked_reason?: string | null
+          blocked_until?: string | null
           cpf?: string | null
           created_at?: string | null
           endereco?: Json | null
+          failed_login_attempts?: number | null
           id?: string
+          last_failed_login?: string | null
           name?: string
           role?: string | null
           telefone?: string | null
           updated_at?: string | null
+          membership_started_at?: string | null
+          membership_expires_at?: string | null
+          membership_lifetime?: boolean | null
         }
         Relationships: []
       }
@@ -166,6 +231,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notes: {
+        Row: {
+          id: string
+          user_id: string
+          note_date: string
+          title: string
+          content: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          note_date: string
+          title: string
+          content: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          note_date?: string
+          title?: string
+          content?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       versoes: {
         Row: {
@@ -287,246 +382,6 @@ export type Database = {
         }
         Relationships: []
       }
-      versoes_Backup: {
-        Row: {
-          ano_gravacao: number | null
-          atualizada_em: string | null
-          audio_instrumental: string[] | null
-          audio_original: string | null
-          classificacao_vocal_alt: string[] | null
-          compositor: string[] | null
-          compras: number | null
-          conteudo: string | null
-          coro_feminino: boolean | null
-          coro_masculino: boolean | null
-          criada_em: string | null
-          criada_por: string | null
-          dificuldade: number | null
-          elenco: string | null
-          estilo: string[] | null
-          id: number
-          letra_original: string
-          letrista: string[] | null
-          musical: string
-          musical_alt: string[] | null
-          natureza: string[] | null
-          observacoes: string | null
-          origem: string | null
-          pdf: string | null
-          revisao: string[] | null
-          solistas_femininos: number | null
-          solistas_masculinos: number | null
-          status: string | null
-          titulo_alt: string[] | null
-          titulo_original: string
-          titulo_pt_br: string
-          url_imagem: string | null
-          valor: number | null
-          versionado_em: string | null
-          versionista: string[] | null
-          versoes_irmas: number[] | null
-          visualizacoes: number | null
-        }
-        Insert: {
-          ano_gravacao?: number | null
-          atualizada_em?: string | null
-          audio_instrumental?: string[] | null
-          audio_original?: string | null
-          classificacao_vocal_alt?: string[] | null
-          compositor?: string[] | null
-          compras?: number | null
-          conteudo?: string | null
-          coro_feminino?: boolean | null
-          coro_masculino?: boolean | null
-          criada_em?: string | null
-          criada_por?: string | null
-          dificuldade?: number | null
-          elenco?: string | null
-          estilo?: string[] | null
-          id?: number
-          letra_original: string
-          letrista?: string[] | null
-          musical: string
-          musical_alt?: string[] | null
-          natureza?: string[] | null
-          observacoes?: string | null
-          origem?: string | null
-          pdf?: string | null
-          revisao?: string[] | null
-          solistas_femininos?: number | null
-          solistas_masculinos?: number | null
-          status?: string | null
-          titulo_alt?: string[] | null
-          titulo_original: string
-          titulo_pt_br: string
-          url_imagem?: string | null
-          valor?: number | null
-          versionado_em?: string | null
-          versionista?: string[] | null
-          versoes_irmas?: number[] | null
-          visualizacoes?: number | null
-        }
-        Update: {
-          ano_gravacao?: number | null
-          atualizada_em?: string | null
-          audio_instrumental?: string[] | null
-          audio_original?: string | null
-          classificacao_vocal_alt?: string[] | null
-          compositor?: string[] | null
-          compras?: number | null
-          conteudo?: string | null
-          coro_feminino?: boolean | null
-          coro_masculino?: boolean | null
-          criada_em?: string | null
-          criada_por?: string | null
-          dificuldade?: number | null
-          elenco?: string | null
-          estilo?: string[] | null
-          id?: number
-          letra_original?: string
-          letrista?: string[] | null
-          musical?: string
-          musical_alt?: string[] | null
-          natureza?: string[] | null
-          observacoes?: string | null
-          origem?: string | null
-          pdf?: string | null
-          revisao?: string[] | null
-          solistas_femininos?: number | null
-          solistas_masculinos?: number | null
-          status?: string | null
-          titulo_alt?: string[] | null
-          titulo_original?: string
-          titulo_pt_br?: string
-          url_imagem?: string | null
-          valor?: number | null
-          versionado_em?: string | null
-          versionista?: string[] | null
-          versoes_irmas?: number[] | null
-          visualizacoes?: number | null
-        }
-        Relationships: []
-      }
-      versoes_TESTES_SUBIR: {
-        Row: {
-          ano_gravacao: number | null
-          atualizada_em: string | null
-          audio_instrumental: string[] | null
-          audio_original: string | null
-          classificacao_vocal_alt: string[] | null
-          compositor: string[] | null
-          compras: number | null
-          conteudo: string | null
-          coro_feminino: boolean | null
-          coro_masculino: boolean | null
-          criada_em: string | null
-          criada_por: string | null
-          dificuldade: number | null
-          elenco: string | null
-          estilo: string[] | null
-          id: number
-          letra_original: string
-          letrista: string[] | null
-          musical: string
-          musical_alt: string[] | null
-          natureza: string[] | null
-          observacoes: string | null
-          origem: string | null
-          pdf: string | null
-          revisao: string[] | null
-          solistas_femininos: number | null
-          solistas_masculinos: number | null
-          status: string | null
-          titulo_alt: string[] | null
-          titulo_original: string
-          titulo_pt_br: string
-          url_imagem: string | null
-          valor: number | null
-          versionado_em: string | null
-          versionista: string[] | null
-          versoes_irmas: number[] | null
-          visualizacoes: number | null
-        }
-        Insert: {
-          ano_gravacao?: number | null
-          atualizada_em?: string | null
-          audio_instrumental?: string[] | null
-          audio_original?: string | null
-          classificacao_vocal_alt?: string[] | null
-          compositor?: string[] | null
-          compras?: number | null
-          conteudo?: string | null
-          coro_feminino?: boolean | null
-          coro_masculino?: boolean | null
-          criada_em?: string | null
-          criada_por?: string | null
-          dificuldade?: number | null
-          elenco?: string | null
-          estilo?: string[] | null
-          id?: number
-          letra_original: string
-          letrista?: string[] | null
-          musical: string
-          musical_alt?: string[] | null
-          natureza?: string[] | null
-          observacoes?: string | null
-          origem?: string | null
-          pdf?: string | null
-          revisao?: string[] | null
-          solistas_femininos?: number | null
-          solistas_masculinos?: number | null
-          status?: string | null
-          titulo_alt?: string[] | null
-          titulo_original: string
-          titulo_pt_br: string
-          url_imagem?: string | null
-          valor?: number | null
-          versionado_em?: string | null
-          versionista?: string[] | null
-          versoes_irmas?: number[] | null
-          visualizacoes?: number | null
-        }
-        Update: {
-          ano_gravacao?: number | null
-          atualizada_em?: string | null
-          audio_instrumental?: string[] | null
-          audio_original?: string | null
-          classificacao_vocal_alt?: string[] | null
-          compositor?: string[] | null
-          compras?: number | null
-          conteudo?: string | null
-          coro_feminino?: boolean | null
-          coro_masculino?: boolean | null
-          criada_em?: string | null
-          criada_por?: string | null
-          dificuldade?: number | null
-          elenco?: string | null
-          estilo?: string[] | null
-          id?: number
-          letra_original?: string
-          letrista?: string[] | null
-          musical?: string
-          musical_alt?: string[] | null
-          natureza?: string[] | null
-          observacoes?: string | null
-          origem?: string | null
-          pdf?: string | null
-          revisao?: string[] | null
-          solistas_femininos?: number | null
-          solistas_masculinos?: number | null
-          status?: string | null
-          titulo_alt?: string[] | null
-          titulo_original?: string
-          titulo_pt_br?: string
-          url_imagem?: string | null
-          valor?: number | null
-          versionado_em?: string | null
-          versionista?: string[] | null
-          versoes_irmas?: number[] | null
-          visualizacoes?: number | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -535,10 +390,15 @@ export type Database = {
       create_basic_profile: {
         Args: { user_id: string; user_name: string }
         Returns: {
+          account_status: string | null
+          blocked_reason: string | null
+          blocked_until: string | null
           cpf: string | null
           created_at: string | null
           endereco: Json | null
+          failed_login_attempts: number | null
           id: string
+          last_failed_login: string | null
           name: string
           role: string | null
           telefone: string | null
@@ -563,31 +423,70 @@ export type Database = {
         Returns: {
           id: string
           email: string
-          email_confirmed_at: string
+          name: string
+          telefone: string
+          role: string
+          created_at: string
+          avatar_url: string
+          address: string
+          account_status: string
+          failed_login_attempts: number
+          blocked_until: string
+        }[]
+      }
+      get_all_users_with_auth_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          role: string
           created_at: string
           updated_at: string
+          cpf: string
+          telefone: string
+          endereco: Json
+          email: string
+          email_confirmed_at: string
           last_sign_in_at: string
-          raw_user_meta_data: Json
-          profile_name: string
-          profile_role: string
-          profile_cpf: string
-          profile_telefone: string
-          profile_endereco: string
-          profile_created_at: string
         }[]
+      }
+      get_user_email: {
+        Args: { user_uuid: string }
+        Returns: string
       }
       get_user_profile: {
         Args: { user_id: string }
         Returns: {
+          account_status: string | null
+          blocked_reason: string | null
+          blocked_until: string | null
           cpf: string | null
           created_at: string | null
           endereco: Json | null
+          failed_login_attempts: number | null
           id: string
+          last_failed_login: string | null
           name: string
           role: string | null
           telefone: string | null
           updated_at: string | null
         }
+      }
+      increment_failed_login_attempts: {
+        Args: { user_id: string; block_until?: string }
+        Returns: boolean
+      }
+      reset_failed_login_attempts: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      update_account_status: {
+        Args: { user_id: string; new_status: string; reason?: string }
+        Returns: boolean
+      }
+      update_user_role_admin: {
+        Args: { user_id: string; new_role: string }
+        Returns: Json
       }
     }
     Enums: {
@@ -599,21 +498,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -631,14 +534,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -654,14 +559,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -677,35 +584,33 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
+  DefaultSchemaCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends DefaultSchemaCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+> = DefaultSchemaCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : DefaultSchemaCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][DefaultSchemaCompositeTypeNameOrOptions]
     : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const

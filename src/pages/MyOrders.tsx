@@ -5,10 +5,14 @@ import { getVersesByIds, Verse } from '@/services/versesService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-// import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
-import { Music, Calendar, User, ArrowLeft, Package, Heart } from 'lucide-react';
+import { Music, Calendar, User, ArrowLeft, Package } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { useCart, CartProvider } from '@/hooks/useCart';
+import { DEFAULT_VERSE_IMAGE } from '@/constants/images';
+
 
 const MyOrders = () => {
   const { user } = useAuth();
@@ -61,9 +65,13 @@ const MyOrders = () => {
           }
         }
         
-        // Converter Map para array e ordenar por data de criação (mais recente primeiro)
+        // Converter Map para array e ordenar alfabeticamente pelo título original
         const allVerses = Array.from(uniqueVerses.values())
-          .sort((a, b) => new Date(b.criada_em || 0).getTime() - new Date(a.criada_em || 0).getTime());
+          .sort((a, b) => {
+            const titleA = (a.titulo_original || a.titulo_pt_br || '').toLowerCase();
+            const titleB = (b.titulo_original || b.titulo_pt_br || '').toLowerCase();
+            return titleA.localeCompare(titleB, 'pt-BR');
+          });
         
         setPurchasedVerses(allVerses);
       } catch (error) {
@@ -85,66 +93,102 @@ const MyOrders = () => {
     });
   };
 
-  const getMusicalIcon = (musical: string) => {
-    const musicalLower = musical.toLowerCase();
-    if (musicalLower.includes('hamilton')) return '/hamilton.svg';
-    if (musicalLower.includes('hakuna matata') || musicalLower.includes('rei leão')) return '/hakuna-matata.svg';
-    if (musicalLower.includes('les misérables') || musicalLower.includes('miseráveis')) return '/les-miserables.svg';
-    return '/musical-generic.svg';
+  // Função para obter imagem válida do verso
+  const getValidImage = (image?: string) => {
+    console.log('🖼️ [MyOrders] Verificando imagem:', image);
+    
+    if (!image || image.trim() === '' || image === 'null') {
+      console.log('❌ [MyOrders] Imagem inválida ou vazia, usando genérica');
+      return DEFAULT_VERSE_IMAGE;
+    }
+    
+    // Se a imagem contém o path do bucket capas ou é do Supabase, usar ela
+    if (image.includes('/capas/') || image.includes('supabase.co') || image.includes('hlrcvvaneofcpncbqjyg')) {
+      console.log('✅ [MyOrders] Imagem válida do Supabase:', image);
+      return image;
+    }
+    
+    // Se for uma URL externa válida, usar ela
+    if (image.startsWith('http')) {
+      console.log('✅ [MyOrders] URL externa válida:', image);
+      return image;
+    }
+    
+    console.log('⚠️ [MyOrders] Imagem não reconhecida, usando genérica:', image);
+    return DEFAULT_VERSE_IMAGE;
   };
+
+
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
+      <CartProvider>
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex items-center justify-center min-h-[400px]">
+              <LoadingSpinner />
+            </div>
+          </div>
+          <Footer />
+        </div>
+      </CartProvider>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="p-8 text-center">
-            <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
-            <p className="text-gray-600 mb-4">Você precisa estar logado para ver seus pedidos.</p>
-            <Link to="/login">
-              <Button className="w-full">
-                Fazer Login
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <CartProvider>
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex items-center justify-center min-h-[400px]">
+              <Card className="w-full max-w-md mx-4">
+                <CardContent className="p-8 text-center">
+                  <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
+                  <p className="text-gray-600 mb-4">Você precisa estar logado para ver seus pedidos.</p>
+                  <Link to="/login">
+                    <Button className="w-full">
+                      Fazer Login
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      </CartProvider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="rounded-full">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar
-              </Button>
-            </Link>
+    <CartProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        
+        <main className="container mx-auto px-4 sm:px-6 py-6">
+          {/* Cabeçalho */}
+          <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <Link to="/">
+                <Button variant="ghost" size="sm" className="rounded-full">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Voltar
+                </Button>
+              </Link>
+            </div>
+            
+            <div className="flex items-center gap-3 mb-2">
+              <Package className="w-8 h-8 text-primary" />
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+                Meus Pedidos
+              </h1>
+            </div>
+            
+
           </div>
-          
-          <div className="flex items-center gap-3 mb-2">
-            <Package className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-              Meus Pedidos
-            </h1>
-          </div>
-          
-          <p className="text-gray-600 text-lg">
-            Aqui estão todos os versos que você adquiriu, incluindo versões irmãs
-          </p>
-        </div>
 
         {/* Error State */}
         {error && (
@@ -171,12 +215,12 @@ const MyOrders = () => {
                 Nenhum pedido encontrado
               </h2>
               <p className="text-gray-500 mb-6 text-lg">
-                Você ainda não adquiriu nenhum verso. Explore nossa coleção e encontre suas músicas favoritas!
+                Você ainda não adquiriu nenhuma versão
               </p>
-              <Link to="/music">
+              <Link to="/">
                 <Button size="lg" className="px-8">
                   <Music className="w-5 h-5 mr-2" />
-                  Explorar Músicas
+                  Encontrar versões
                 </Button>
               </Link>
             </CardContent>
@@ -188,73 +232,82 @@ const MyOrders = () => {
           <>
             <div className="mb-6">
               <Badge variant="secondary" className="text-sm px-3 py-1">
-                {purchasedVerses.length} {purchasedVerses.length === 1 ? 'verso disponível' : 'versos disponíveis'}
+                {purchasedVerses.length} {purchasedVerses.length === 1 ? 'versão disponível' : 'versões disponíveis'}
               </Badge>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {purchasedVerses.map((verse) => (
-                <Card key={verse.id} className="group hover:shadow-lg transition-all duration-300 border-0 shadow-md hover:shadow-xl hover:-translate-y-1">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          src={getMusicalIcon(verse.musical)} 
-                          alt={verse.musical}
-                          className="w-10 h-10 rounded-lg object-cover"
+                <Card key={verse.id} className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white">
+                  {/* Layout horizontal - imagem pequena à esquerda */}
+                  <div className="flex p-4">
+                    {/* Coluna da imagem e valor */}
+                    <div className="flex flex-col items-center mr-4">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 mb-2">
+                        <img
+                          src={getValidImage(verse.url_imagem)}
+                          alt={verse.titulo_pt_br}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null;
+                            target.src = DEFAULT_VERSE_IMAGE;
+                          }}
                         />
-                        <div>
-                          <CardTitle className="text-lg font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-                            {verse.titulo_pt_br}
-                          </CardTitle>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {verse.musical}
-                          </p>
-                        </div>
                       </div>
-                      <Heart className="w-5 h-5 text-red-500 fill-current" />
+
                     </div>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      {verse.titulo_original && verse.titulo_original !== verse.titulo_pt_br && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            Título Original:
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {verse.titulo_original}
-                          </p>
-                        </div>
-                      )}
+                    
+                    {/* Conteúdo principal */}
+                    <div className="flex-1 min-w-0">
+                      {/* Título e Musical */}
+                      <Link to={`/verse/${verse.id}`} className="block">
+                        <h3 className="font-bold text-gray-900 text-base sm:text-lg hover:text-primary transition-colors mb-1">
+                          {verse.titulo_original}
+                        </h3>
+                      </Link>
+                      <p className="text-sm text-gray-600 mb-2 line-clamp-1">
+                        {verse.musical || 'Musical não informado'}
+                      </p>
                       
-                      <div className="h-px bg-gray-200 w-full" />
+                      {/* Tags de classificação vocal dinâmicas */}
+                       {verse.classificacao_vocal_alt && verse.classificacao_vocal_alt.length > 0 && (
+                         <div className="flex flex-wrap gap-2 mb-3">
+                           {verse.classificacao_vocal_alt.map((classificacao, index) => (
+                             <span 
+                               key={index}
+                               className="inline-block px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded-full"
+                             >
+                               {classificacao}
+                             </span>
+                           ))}
+                         </div>
+                       )}
                       
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>Adquirido em {formatDate(verse.criada_em || new Date().toISOString())}</span>
-                        </div>
+                      {/* Data de aquisição */}
+                      <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                        <Calendar className="w-3 h-3" />
+                        <span>Adquirido em {formatDate(verse.criada_em || new Date().toISOString())}</span>
                       </div>
                       
-                      <div className="flex gap-2 pt-2">
-                        <Link to={`/verse/${verse.id}`} className="flex-1">
-                          <Button variant="default" size="sm" className="w-full">
-                            <Music className="w-4 h-4 mr-2" />
-                            Ver Detalhes
-                          </Button>
-                        </Link>
-                      </div>
+                      {/* Botão ocupando toda a largura */}
+                      <Link to={`/verse/${verse.id}`} className="block">
+                        <Button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full py-2 text-sm font-medium transition-colors border border-gray-200">
+                          Ver detalhes
+                        </Button>
+                      </Link>
                     </div>
-                  </CardContent>
+                  </div>
                 </Card>
               ))}
             </div>
           </>
         )}
+        </main>
+        
+        <Footer />
       </div>
-    </div>
+    </CartProvider>
   );
 };
 

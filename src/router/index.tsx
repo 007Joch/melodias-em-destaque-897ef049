@@ -1,8 +1,9 @@
+import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
 import { Layout } from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
+import VerseAccessGuard from '../components/VerseAccessGuard';
 
 // Lazy loading dos componentes para melhor performance
 const HomePage = lazy(() => import('../components/HomePage'));
@@ -13,6 +14,14 @@ const CreateVerse = lazy(() => import('../pages/CreateVerse'));
 const EditVerse = lazy(() => import('../pages/EditVerse'));
 const VerseDetails = lazy(() => import('../pages/VerseDetails'));
 const MusicGrid = lazy(() => import('../components/MusicGrid'));
+const MyOrders = lazy(() => import('../pages/MyOrders'));
+const PreVerse = lazy(() => import('../pages/PreVerse'));
+
+const Contact = lazy(() => import('../pages/Contact'));
+const SongsByTitle = lazy(() => import('../pages/SongsByTitle'));
+// const Teste = lazy(() => import('../pages/Teste'));
+
+const NotFound = lazy(() => import('../pages/NotFound'));
 
 // Wrapper para Suspense
 const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -31,6 +40,59 @@ const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <HomePage />
+          </SuspenseWrapper>
+        ),
+      },
+      // ROTAS ESPECÍFICAS PRIMEIRO (mais específicas)
+      {
+        path: 'meus-pedidos',
+        element: (
+          <ProtectedRoute>
+            <SuspenseWrapper>
+              <MyOrders />
+            </SuspenseWrapper>
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: 'login',
+        element: (
+          <SuspenseWrapper>
+            <Login />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'contato',
+        element: (
+          <SuspenseWrapper>
+            <Contact />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'cancoes-por-titulo',
+        element: (
+          <SuspenseWrapper>
+            <SongsByTitle />
+          </SuspenseWrapper>
+        ),
+      },
+      // {
+      //   path: 'teste',
+      //   element: (
+      //     <SuspenseWrapper>
+      //       <Teste />
+      //     </SuspenseWrapper>
+      //   ),
+      // },
+
+      {
+        path: 'music',
+        element: (
+          <SuspenseWrapper>
+            <MusicGrid />
           </SuspenseWrapper>
         ),
       },
@@ -74,31 +136,34 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      // ROTAS DE VERSOS
       {
-        path: 'login',
+        path: 'preview/:id',
         element: (
           <SuspenseWrapper>
-            <Login />
+            <PreVerse />
           </SuspenseWrapper>
         ),
       },
       {
-        path: 'music',
+        path: 'verse/:id',
         element: (
-          <SuspenseWrapper>
-            <MusicGrid />
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: ':slug',
-        element: (
-          <SuspenseWrapper>
-            <VerseDetails />
-          </SuspenseWrapper>
+          <VerseAccessGuard>
+            <SuspenseWrapper>
+              <VerseDetails />
+            </SuspenseWrapper>
+          </VerseAccessGuard>
         ),
       },
     ],
+  },
+  {
+    path: '*',
+    element: (
+      <SuspenseWrapper>
+        <NotFound />
+      </SuspenseWrapper>
+    ),
   },
 ]);
 

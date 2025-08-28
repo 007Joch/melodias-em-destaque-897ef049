@@ -4,6 +4,7 @@ import { getVersesPaginated } from '../services/versesService';
 import MusicCard from './MusicCard';
 import { Loader2, Plus } from 'lucide-react';
 import { Database } from '../integrations/supabase/types';
+import { DEFAULT_VERSE_IMAGE } from '../constants/images';
 // Removido import de cacheUtils - usando apenas Supabase
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
@@ -122,9 +123,9 @@ const HomePage: React.FC = () => {
     id: verse.id,
     title: verse.titulo_original || 'Dados inconsistentes',
     artist: verse.musical || 'Dados inconsistentes',
-    image: verse.url_imagem || '/musical-generic.svg',
+    image: verse.url_imagem || DEFAULT_VERSE_IMAGE,
     category: getCategoryFromVerse(verse),
-    views: verse.visualizacoes || 0,
+    
     price: verse.valor || 0, // Valor direto do banco
     classificacoes: verse.classificacao_vocal_alt || [],
     dataIndex: index // Para scroll otimizado
@@ -141,7 +142,7 @@ const HomePage: React.FC = () => {
           <div className="flex justify-center items-center py-12">
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <span className="text-gray-600">Carregando versos...</span>
+              <span className="text-gray-600">Carregando versões...</span>
             </div>
           </div>
         </div>
@@ -216,7 +217,7 @@ const HomePage: React.FC = () => {
             <p className="text-gray-600">Descobrir letras e versões da sua música favorita</p>
           </div>
           <div className="flex justify-center items-center py-12">
-            <p className="text-gray-600">Nenhum verso encontrado.</p>
+            <p className="text-gray-600">Nenhuma versão encontrada.</p>
           </div>
         </div>
       </section>
@@ -233,12 +234,12 @@ const HomePage: React.FC = () => {
             <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <p className="text-sm text-blue-800 font-medium">
-                  📊 <span className="font-bold">{totalVerses}</span> versos disponíveis
+                  📊 <span className="font-bold">{totalVerses}</span> versões disponíveis
                 </p>
                 <div className="flex items-center space-x-2">
                   <div className="bg-blue-100 px-3 py-1 rounded-full">
                     <span className="text-xs text-blue-700 font-medium">
-                      Mostrando {verses.length} versos
+                      Mostrando {verses.length} versões
                     </span>
                   </div>
                   {(hasMore || verses.length < totalVerses) && (
@@ -270,7 +271,7 @@ const HomePage: React.FC = () => {
                   artist={verse.artist}
                   image={verse.image}
                   category={verse.category}
-                  views={verse.views}
+    
                   price={verse.price}
                   classificacoes={verse.classificacoes}
                 />

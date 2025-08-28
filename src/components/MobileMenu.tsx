@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Home, Music, List, Users, LogOut, User } from "lucide-react";
+import { Menu, Home, List, Users, LogOut, User, Package, MessageSquare, HelpCircle, Filter, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -11,31 +11,45 @@ const MobileMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut, profile, loading } = useAuth();
 
-  // Definir itens do menu - visíveis apenas para usuários logados
-  const baseItems = [
-    { icon: Home, label: "Início", href: "/" },
-    { icon: Music, label: "Músicas", href: "/music" }
-  ];
+  // Definir itens do menu baseado no status de login
+  let menuItems = [];
 
-  // Adicionar itens de gerenciamento apenas para admins
-  if (profile?.role === 'admin') {
-    baseItems.push(
-      { icon: List, label: "Gerenciar Versos", href: "/manage-verses" },
-      { icon: Users, label: "Gerenciar Usuários", href: "/manage-users" }
-    );
+  if (user) {
+    // Itens para usuários logados
+    menuItems = [
+      { icon: Home, label: "Início", href: "/" },
+      { icon: Filter, label: "Canções por Título", href: "/cancoes-por-titulo" },
+      { icon: Filter, label: "Canções por Musical", href: "/cancoes-por-musical" },
+      { icon: Filter, label: "Canções por Classificação Vocal", href: "/cancoes-por-classificacao-vocal" },
+      { icon: Package, label: "Meus Pedidos", href: "/meus-pedidos" }
+    ];
+
+    // Adicionar itens de gerenciamento apenas para admins
+    if (profile?.role === 'admin') {
+      menuItems.push(
+        { icon: List, label: "Gerenciar Versões", href: "/manage-verses" },
+        { icon: Users, label: "Gerenciar Usuários", href: "/manage-users" },
+        { icon: Settings, label: "Configurações", href: "/configuracoes" },
+        { icon: MessageSquare, label: "Contato", href: "/contato" },
+        { icon: HelpCircle, label: "Perguntas Frequentes", href: "/perguntas-frequentes" }
+      );
+    }
+  } else {
+    // Itens para visitantes não logados
+    menuItems = [
+      { icon: Home, label: "Início", href: "/" },
+      { icon: Filter, label: "Canções por Título", href: "/cancoes-por-titulo" },
+      { icon: Filter, label: "Canções por Musical", href: "/cancoes-por-musical" },
+      { icon: Filter, label: "Canções por Classificação Vocal", href: "/cancoes-por-classificacao-vocal" },
+      { icon: MessageSquare, label: "Contato", href: "/contato" },
+      { icon: HelpCircle, label: "Perguntas Frequentes", href: "/perguntas-frequentes" }
+    ];
   }
-
-  const menuItems = baseItems;
 
   const handleSignOut = async () => {
     await signOut();
     setIsOpen(false);
   };
-
-  // Não exibir o menu para usuários não logados
-  if (!user) {
-    return null;
-  }
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -88,7 +102,7 @@ const MobileMenu = () => {
           )}
 
           {/* Menu Items */}
-          <nav className="flex-1 p-6">
+          <nav className="flex-1 overflow-y-auto p-6">
             <div className="space-y-2">
               {menuItems.map((item) => (
                 <Link
@@ -105,16 +119,18 @@ const MobileMenu = () => {
           </nav>
 
           {/* Footer do Menu */}
-          <div className="p-6 border-t">
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="w-full justify-start"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
+          {user && (
+            <div className="p-6 border-t">
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

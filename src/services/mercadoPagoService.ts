@@ -308,48 +308,53 @@ class MercadoPagoService {
         throw new Error('SDK do Mercado Pago indisponível');
       }
 
-      // Preparar parâmetros para SDK - priorizar payment_method_id
+      // Preparar parâmetros para SDK v2 - apenas amount e bin
       const sdkParams: any = {
-        amount: Number(params.amount)
+        amount: String(params.amount), // SDK v2 espera string
+        locale: 'pt-BR'
       };
 
-      if (params.payment_method_id) {
-        sdkParams.payment_method_id = params.payment_method_id;
-        console.log('✅ Usando payment_method_id:', params.payment_method_id);
-      }
-
+      // SDK v2 só aceita BIN, não payment_method_id diretamente
       if (params.bin && params.bin.length >= 6) {
         sdkParams.bin = params.bin;
         console.log('✅ Usando BIN:', params.bin);
+      } else {
+        console.log('❌ BIN não fornecido ou insuficiente, usando amount apenas');
       }
 
-      console.log('📤 getInstallments - Chamando SDK com:', sdkParams);
+      console.log('📤 getInstallments - Chamando SDK v2 com:', sdkParams);
 
       const sdkResponse: any = await (this.mp as any).getInstallments(sdkParams);
 
-      console.log('📥 getInstallments - Resposta completa do SDK:', JSON.stringify(sdkResponse, null, 2));
+      console.log('📥 getInstallments - Resposta completa do SDK v2:', JSON.stringify(sdkResponse, null, 2));
 
-      // Verificar se payer_costs está presente
-      const listRoot = Array.isArray(sdkResponse) ? sdkResponse[0] : sdkResponse;
-      const payerCosts = listRoot?.payer_costs ?? listRoot?.installments ?? [];
-      
-      console.log('🔍 payer_costs extraído:', payerCosts);
-      console.log('✅ payer_costs.length:', payerCosts?.length || 0);
-
-      if (!payerCosts || payerCosts.length === 0) {
-        console.warn('⚠️ payer_costs vazio - revisar parâmetros enviados');
+      // SDK v2 retorna array de objetos com payer_costs
+      if (!Array.isArray(sdkResponse) || sdkResponse.length === 0) {
+        console.warn('⚠️ SDK v2 retornou array vazio ou inválido');
         return [];
       }
 
-      // A resposta do SDK costuma ser um array com objetos contendo payer_costs
+      // Buscar payer_costs no primeiro elemento
+      const firstMethod = sdkResponse[0];
+      const payerCosts = firstMethod?.payer_costs;
+      
+      console.log('🔍 payer_costs extraído do SDK v2:', payerCosts);
+      console.log('✅ payer_costs.length:', payerCosts?.length || 0);
+
+      if (!Array.isArray(payerCosts) || payerCosts.length === 0) {
+        console.warn('⚠️ payer_costs vazio no SDK v2 - revisar parâmetros enviados');
+        return [];
+      }
+
+      // A resposta do SDK v2 tem estrutura: [{ payer_costs: [...] }]
       const options: InstallmentOption[] = [];
 
       for (const item of payerCosts) {
-        const quantity = item?.installments ?? item?.quantity;
-        const amount = item?.installment_amount ?? item?.amount;
-        const total = item?.total_amount ?? item?.total;
-        const rate = item?.installment_rate ?? item?.rate;
-        const recommended_message = item?.recommended_message ?? undefined;
+        const quantity = item?.installments;
+        const amount = item?.installment_amount;
+        const total = item?.total_amount;
+        const rate = item?.installment_rate;
+        const recommended_message = item?.recommended_message;
         
         console.log(`💳 Processando parcela ${quantity}x:`, { quantity, amount, total, rate, recommended_message });
         
@@ -359,10 +364,10 @@ class MercadoPagoService {
       }
 
       options.sort((a, b) => a.quantity - b.quantity);
-      console.log('✅ getInstallments - Opções finais:', options);
+      console.log('✅ getInstallments - Opções finais do SDK v2:', options);
       return options;
     } catch (error) {
-      console.error('❌ Erro ao obter opções de parcelas (SDK):', error);
+      console.error('❌ Erro ao obter opções de parcelas (SDK v2):', error);
       return [];
     }
   }

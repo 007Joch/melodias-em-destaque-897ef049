@@ -32,7 +32,7 @@ interface Verse {
 }
 
 const ManageVerses: React.FC = () => {
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -798,7 +798,7 @@ const ManageVerses: React.FC = () => {
                 onChange={(e) => {
                   const confirmButton = document.getElementById('confirm-delete-all');
                   if (confirmButton) {
-                    confirmButton.disabled = e.target.value !== 'CONFIRMAR' || isBulkDeleting;
+                    (confirmButton as HTMLButtonElement).disabled = (e.target as HTMLInputElement).value !== 'CONFIRMAR' || isBulkDeleting;
                   }
                 }}
               />

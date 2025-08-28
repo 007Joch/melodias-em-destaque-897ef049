@@ -137,8 +137,10 @@ const PrePurchase = () => {
       setIsAddingToCart(true);
       
       const cartItem = {
-        id: verse.id,
+        id: verse.id.toString(),
         title: verse.titulo_pt_br || verse.titulo_original || 'Título não disponível',
+        artist: 'Artista',
+        category: 'Teatro Musical',
         musical: verse.musical || 'Musical não informado',
         price: 15.00, // Preço padrão
         image: '/musical-generic.svg'
@@ -268,7 +270,7 @@ const PrePurchase = () => {
             )}
 
             {/* Áudio Brasileiro */}
-            {isValidData(verse.audio_brasileiro) ? (
+            {isValidData(verse.audio_instrumental) ? (
               <Card className="overflow-hidden rounded-xl border-0 shadow-lg">
                 <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50">
                   <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
@@ -277,7 +279,7 @@ const PrePurchase = () => {
                   </h2>
                   <div className="w-full rounded-lg overflow-hidden" style={{aspectRatio: '16/10'}}>
                     {(() => {
-                      const youtubeId = getYouTubeId(verse.audio_brasileiro!);
+                      const youtubeId = getYouTubeId(Array.isArray(verse.audio_instrumental) ? verse.audio_instrumental[0] : verse.audio_instrumental!);
                       if (youtubeId) {
                         return (
                           <iframe

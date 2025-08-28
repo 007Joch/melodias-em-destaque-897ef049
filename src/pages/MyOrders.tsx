@@ -63,7 +63,7 @@ const MyOrders = () => {
         
         // Converter Map para array e ordenar por data de criação (mais recente primeiro)
         const allVerses = Array.from(uniqueVerses.values())
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          .sort((a, b) => new Date(b.criada_em || 0).getTime() - new Date(a.criada_em || 0).getTime());
         
         setPurchasedVerses(allVerses);
       } catch (error) {

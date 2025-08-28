@@ -146,7 +146,7 @@ const ManageUsers = () => {
                 email: authData?.user?.email || 'Email não disponível',
                 email_confirmed_at: authData?.user?.email_confirmed_at || null,
                 last_sign_in_at: authData?.user?.last_sign_in_at || null,
-                raw_user_meta_data: authData?.user?.raw_user_meta_data || {}
+                raw_user_meta_data: authData?.user?.user_metadata || {}
               };
             } catch (authError) {
               console.warn('⚠️ Não foi possível buscar dados de auth para usuário:', profile.id);
@@ -231,7 +231,7 @@ const ManageUsers = () => {
                 email: authData?.user?.email || 'Email não disponível',
                 email_confirmed_at: authData?.user?.email_confirmed_at || null,
                 last_sign_in_at: authData?.user?.last_sign_in_at || null,
-                raw_user_meta_data: authData?.user?.raw_user_meta_data || {}
+                raw_user_meta_data: authData?.user?.user_metadata || {}
               };
             } catch {
               return {

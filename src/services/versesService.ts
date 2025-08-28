@@ -1051,11 +1051,11 @@ export const searchVersesByTitle = async (searchTerm: string): Promise<Verse[]> 
     
     const { data, error } = await supabase
       .from('versoes')
-      .select('id, titulo_original, titulo_pt_br, musical')
+      .select('*')
       .ilike('titulo_original', `%${searchTerm}%`)
       .eq('status', 'active')
       .order('titulo_original')
-      .limit(20)
+      .limit(20);
 
     if (error) {
       console.error('❌ Erro ao buscar versos por título:', error);

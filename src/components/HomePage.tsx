@@ -5,6 +5,7 @@ import MusicCard from './MusicCard';
 import { Loader2, Plus } from 'lucide-react';
 import { Database } from '../integrations/supabase/types';
 import { DEFAULT_VERSE_IMAGE } from '../constants/images';
+import { Button } from '@/components/ui/button';
 // Removido import de cacheUtils - usando apenas Supabase
 
 type Verse = Database['public']['Tables']['versoes']['Row'];
@@ -161,7 +162,7 @@ const HomePage: React.FC = () => {
           <div className="flex justify-center items-center py-12">
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
-              <button 
+              <Button 
                 onClick={() => {
                   setError(null);
                   setCurrentPage(1);
@@ -197,10 +198,10 @@ const HomePage: React.FC = () => {
                   };
                   fetchInitialVerses();
                 }}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                variant="default"
               >
                 Tentar Novamente
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -290,10 +291,12 @@ const HomePage: React.FC = () => {
                 Próximos {Math.min(ITEMS_PER_PAGE, totalVerses - verses.length)} versos serão carregados
               </p>
             </div>
-            <button
+            <Button
                onClick={handleLoadMore}
                disabled={isLoadingMore}
-               className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+               variant="premium"
+               size="lg"
+               className="group flex items-center space-x-3"
              >
               <div className="flex items-center space-x-3">
                  {isLoadingMore ? (
@@ -310,8 +313,8 @@ const HomePage: React.FC = () => {
                      </div>
                    </>
                  )}
-               </div>
-            </button>
+                </div>
+            </Button>
           </div>
         )}
       </div>

@@ -238,14 +238,14 @@ const SearchResultsPage: React.FC = () => {
             </p>
             {/* Classificação vocal e outras informações */}
             <div className="flex flex-wrap gap-1">
-              {verse.classificacao_vocal && (
+              {verse.classificacao_vocal_alt && verse.classificacao_vocal_alt.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {verse.classificacao_vocal}
+                  {verse.classificacao_vocal_alt.join(', ')}
                 </Badge>
               )}
-              {verse.ano && (
+              {verse.ano_gravacao && (
                 <Badge variant="outline" className="text-xs">
-                  {verse.ano}
+                  {verse.ano_gravacao}
                 </Badge>
               )}
             </div>

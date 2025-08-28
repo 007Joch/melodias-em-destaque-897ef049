@@ -135,7 +135,7 @@ const MusicCard = ({ id, title, artist, image, category, price, classificacoes }
   const validImage = getValidImage(image);
   
   return (
-    <Card className="group overflow-hidden rounded-xl border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white">
+    <Card className="card-elegant group overflow-hidden">
       {/* Layout horizontal - imagem pequena à esquerda */}
       <div className="flex p-4">
         {/* Coluna da imagem e valor */}
@@ -196,14 +196,18 @@ const MusicCard = ({ id, title, artist, image, category, price, classificacoes }
           {checkingPurchase ? (
             <Button 
               disabled
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-full py-2 text-sm font-medium transition-colors opacity-50"
+              variant="ghost"
+              size="sm"
+              className="w-full opacity-50"
             >
               Verificando...
             </Button>
           ) : isPurchased ? (
             <Button 
               onClick={() => navigate(`/preview/${id}`)}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full py-2 sm:py-1.5 text-xs sm:text-xs font-medium transition-colors border border-gray-200"
+              variant="secondary"
+              size="sm"
+              className="w-full"
             >
               Ver detalhes
             </Button>
@@ -211,18 +215,18 @@ const MusicCard = ({ id, title, artist, image, category, price, classificacoes }
             <div className="flex flex-col sm:flex-row gap-2">
               <Button 
                 onClick={() => navigate(`/preview/${id}`)}
-                className="w-full sm:flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full py-2 sm:py-1.5 text-xs sm:text-xs font-medium transition-colors border border-gray-200"
+                variant="outline"
+                size="sm"
+                className="w-full sm:flex-1"
               >
                 Detalhes
               </Button>
               <Button 
                 onClick={handleAddToCart}
                 disabled={isInCart}
-                className={`w-full sm:flex-1 rounded-full py-2 sm:py-1.5 text-xs sm:text-xs font-medium transition-colors ${
-                  isInCart 
-                    ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-200' 
-                    : 'bg-purple-600 hover:bg-purple-700 text-white'
-                }`}
+                variant={isInCart ? "success" : "default"}
+                size="sm"
+                className="w-full sm:flex-1"
                 key={`add-cart-${verseId}-${forceUpdate}-${isInCart}`}
               >
                 {isInCart ? (

@@ -19,24 +19,30 @@ const CheckoutPending = () => {
   };
 
   const getStatusMessage = () => {
-    if (payment_type === 'bank_transfer') {
+    const searchParams = new URLSearchParams(window.location.search);
+    const paymentType = searchParams.get('payment_type');
+    
+    if (paymentType === 'bank_transfer') {
       return 'Aguardando confirmação da transferência bancária.';
     }
-    if (payment_type === 'ticket') {
+    if (paymentType === 'ticket') {
       return 'Aguardando pagamento do boleto.';
     }
     return 'Seu pagamento está sendo processado.';
   };
 
   const getInstructions = () => {
-    if (payment_type === 'bank_transfer') {
+    const searchParams = new URLSearchParams(window.location.search);
+    const paymentType = searchParams.get('payment_type');
+    
+    if (paymentType === 'bank_transfer') {
       return [
         'Você receberá um email com os dados para transferência',
         'Realize a transferência em até 3 dias úteis',
         'Após a confirmação, seu pedido será processado'
       ];
     }
-    if (payment_type === 'ticket') {
+    if (paymentType === 'ticket') {
       return [
         'Você receberá um email com o boleto',
         'Pague o boleto em qualquer banco ou lotérica',
